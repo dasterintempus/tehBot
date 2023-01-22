@@ -21,7 +21,7 @@ def build_bot_session():
     session = requests.Session()
     session.headers.update({
         "Authorization": f"Bot {BOT_TOKEN}",
-        "User-Agent": "tehBot (https://[dev-]api.dasterin.net/discord-interactions, 0.1.0)"
+        "User-Agent": "tehBot (0.1.0)"
     })
     return session
 
@@ -30,7 +30,7 @@ def build_oauth_session(code):
     session = requests.Session()
     session.headers.update({
         "Authorization": f"Bearer {token_r['access_token']}",
-        "User-Agent": "tehBot (https://[dev-]api.dasterin.net/discord-interactions, 0.1.0)"
+        "User-Agent": "tehBot (0.1.0)"
     })
     return session
 
