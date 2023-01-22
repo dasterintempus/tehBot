@@ -180,6 +180,7 @@ def stack_cloudfront(ctx):
     stackname = f"tehBot-{ctx['args'].env}Cloudfront"
     params = {}
     params["UsEastOneCertificateArn"] = ctx["local"]["us-east-1_cert_arn"]
+    params["HostedZoneName"] = ctx["local"]["domain"]
     # params["WebACLArn"] = adminutils.get_cft_output(ctx["args"].env, "WAF", "WebACLArn", region="us-east-1")
     upsert_stack(ctx, stackname, "../cft/cloudfront.yml", params)
     push_web_files(ctx)
