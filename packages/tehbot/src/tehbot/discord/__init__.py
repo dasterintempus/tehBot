@@ -97,7 +97,7 @@ def get_oauth_token(code):
 
     session = requests.Session()
     session.headers.update({
-        "User-Agent": "tehBot (https://[dev-]api.dasterin.net/discord-interactions, 0.1.0)"
+        "User-Agent": "tehBot (0.1.0)"
     })
     r = session.post(f"{API_BASE_URL}/oauth2/token", data=data, headers=headers)
     try:
