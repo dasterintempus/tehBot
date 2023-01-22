@@ -1,0 +1,78 @@
+{
+    "name": "lobby",
+    "type": 1,
+    "description": "Manages the Steam lobby tracker.",
+    "options": [
+        {
+            "name": "admin",
+            "description": "Manages lobby tracker configuration.",
+            "type": 2,
+            "options": [
+                {
+                    "name": "enable",
+                    "description": "Enables the Steam lobby tracker for this server.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "channel_name",
+                            "description": "The channel to post updates to.",
+                            "type": 7,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "disable",
+                    "description": "Disables the Steam lobby tracker for this server.",
+                    "type": 1
+                }
+            ]
+        },
+        {
+            "name": "link",
+            "description": "Begin tracking your current Steam lobby and post a link to it.",
+            "type": 1,
+            "options": [
+                {
+                    "name": "description",
+                    "description": "Lobby description text.",
+                    "type": 3,
+                    "required": false
+                }
+            ]
+        },
+        {
+            "name": "opt-in",
+            "description": "Opt into the Steam lobby tracker.",
+            "type": 1,
+            "options": [
+                {
+                    "name": "steam_profile_url",
+                    "description": "The URL to your Steam Profile.",
+                    "type": 3,
+                    "required": true
+                }
+            ]
+        },
+        {
+            "name": "opt-out",
+            "description": "Opt into the Steam lobby tracker.",
+            "type": 1
+        },
+        {
+            "name": "friend",
+            "description": "Request the bot to send you a friend invite on Steam. Requires opting into the bot first.",
+            "type": 1
+        },
+        {
+            "name": "url",
+            "description": "Post your lobby URL, without ongoing tracking.",
+            "type": 1
+        },
+        {
+            "name": "private-url",
+            "description": "DM you your lobby URL, without ongoing tracking.",
+            "type": 1
+        }
+    ]
+}

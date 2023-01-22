@@ -1,0 +1,388 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  EnvPrefix:
+    Type: String
+    Default: ""
+
+Resources:
+  LoggingPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "logs:CreateLogGroup"
+            Resource: !Sub "arn:${AWS::Partition}:logs:us-east-2:${AWS::AccountId}:*"
+          - Effect: "Allow"
+            Action:
+              - "logs:CreateLogStream"
+              - "logs:PutLogEvents"
+            Resource:
+              - !Sub "arn:${AWS::Partition}:logs:us-east-2:${AWS::AccountId}:log-group:/aws/lambda/*"
+
+  SecretsPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "secretsmanager:DescribeSecret"
+              - "secretsmanager:GetSecretValue"
+            Resource: !ImportValue
+              'Fn::Sub': "tehBot-${EnvPrefix}LambdaSecretsArn"
+
+  # S3TemplateBucketPolicy:
+  #   Type: AWS::IAM::ManagedPolicy
+  #   Properties:
+  #     PolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: "Allow"
+  #           Action:
+  #             - "s3:PutObject"
+  #             - "s3:GetObject"
+  #             - "s3:ListBucket"
+  #             - "s3:PutObjectTagging"
+  #             - "s3:DeleteObject"
+  #           Resource:
+  #             - !Sub
+  #               - "arn:${AWS::Partition}:s3:::${tehBot_TemplateBucket}"
+  #               - tehBot_TemplateBucket: !ImportValue
+  #                   'Fn::Sub': "tehBot-${EnvPrefix}TemplateBucket"
+  #             - !Sub
+  #               - "arn:${AWS::Partition}:s3:::${tehBot_TemplateBucket}/*"
+  #               - tehBot_TemplateBucket: !ImportValue
+  #                   'Fn::Sub': "tehBot-${EnvPrefix}TemplateBucket"
+
+  S3CacheBucketPolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "s3:PutObject"
+              - "s3:GetObject"
+              - "s3:ListBucket"
+              - "s3:PutObjectTagging"
+              - "s3:DeleteObject"
+            Resource:
+              - !Sub
+                - "arn:${AWS::Partition}:s3:::${tehBot_CacheBucket}"
+                - tehBot_CacheBucket: !ImportValue
+                    'Fn::Sub': "tehBot-${EnvPrefix}CacheBucket"
+              - !Sub
+                - "arn:${AWS::Partition}:s3:::${tehBot_CacheBucket}/*"
+                - tehBot_CacheBucket: !ImportValue
+                    'Fn::Sub': "tehBot-${EnvPrefix}CacheBucket"
+
+  SettingsTablePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "dynamodb:BatchGetItem"
+              - "dynamodb:BatchWriteItem"
+              - "dynamodb:ConditionCheckItem"
+              - "dynamodb:PutItem"
+              - "dynamodb:DescribeTable"
+              - "dynamodb:DeleteItem"
+              - "dynamodb:GetItem"
+              - "dynamodb:Scan"
+              - "dynamodb:Query"
+              - "dynamodb:UpdateItem"
+              - "dynamodb:DescribeTimeToLive"
+            Resource:
+              - !Join
+                - "/"
+                -
+                  - !Sub "arn:${AWS::Partition}:dynamodb:us-east-2:${AWS::AccountId}:table"
+                  - !ImportValue
+                    'Fn::Sub': "tehBot-${EnvPrefix}SettingsTable"
+                  - "index"
+                  - "*"
+              - !Join
+                - "/"
+                -
+                  - !Sub "arn:${AWS::Partition}:dynamodb:us-east-2:${AWS::AccountId}:table"
+                  - !ImportValue
+                    'Fn::Sub': "tehBot-${EnvPrefix}SettingsTable"
+          - Effect: "Allow"
+            Action: "dynamodb:ListTables"
+            Resource: "*"
+
+  ApiTablePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "dynamodb:BatchGetItem"
+              - "dynamodb:BatchWriteItem"
+              - "dynamodb:ConditionCheckItem"
+              - "dynamodb:PutItem"
+              - "dynamodb:DescribeTable"
+              - "dynamodb:DeleteItem"
+              - "dynamodb:GetItem"
+              - "dynamodb:Scan"
+              - "dynamodb:Query"
+              - "dynamodb:UpdateItem"
+              - "dynamodb:DescribeTimeToLive"
+            Resource:
+              - !Join
+                - "/"
+                -
+                  - !Sub "arn:${AWS::Partition}:dynamodb:us-east-2:${AWS::AccountId}:table"
+                  - !ImportValue
+                    'Fn::Sub': "tehBot-${EnvPrefix}ApiTable"
+                  - "index"
+                  - "*"
+              - !Join
+                - "/"
+                -
+                  - !Sub "arn:${AWS::Partition}:dynamodb:us-east-2:${AWS::AccountId}:table"
+                  - !ImportValue
+                    'Fn::Sub': "tehBot-${EnvPrefix}ApiTable"
+          - Effect: "Allow"
+            Action: "dynamodb:ListTables"
+            Resource: "*"
+
+  QuotesTablePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "dynamodb:BatchGetItem"
+              - "dynamodb:BatchWriteItem"
+              - "dynamodb:ConditionCheckItem"
+              - "dynamodb:PutItem"
+              - "dynamodb:DescribeTable"
+              - "dynamodb:DeleteItem"
+              - "dynamodb:GetItem"
+              - "dynamodb:Scan"
+              - "dynamodb:Query"
+              - "dynamodb:UpdateItem"
+              - "dynamodb:DescribeTimeToLive"
+            Resource:
+              - !Join
+                - "/"
+                -
+                  - !Sub "arn:${AWS::Partition}:dynamodb:us-east-2:${AWS::AccountId}:table"
+                  - !ImportValue
+                    'Fn::Sub': "tehBot-${EnvPrefix}QuotesTable"
+                  - "index"
+                  - "*"
+              - !Join
+                - "/"
+                -
+                  - !Sub "arn:${AWS::Partition}:dynamodb:us-east-2:${AWS::AccountId}:table"
+                  - !ImportValue
+                    'Fn::Sub': "tehBot-${EnvPrefix}QuotesTable"
+          - Effect: "Allow"
+            Action: "dynamodb:ListTables"
+            Resource: "*"
+
+  ChartTablePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "dynamodb:BatchGetItem"
+              - "dynamodb:BatchWriteItem"
+              - "dynamodb:ConditionCheckItem"
+              - "dynamodb:PutItem"
+              - "dynamodb:DescribeTable"
+              - "dynamodb:DeleteItem"
+              - "dynamodb:GetItem"
+              - "dynamodb:Scan"
+              - "dynamodb:Query"
+              - "dynamodb:UpdateItem"
+              - "dynamodb:DescribeTimeToLive"
+            Resource:
+              - !Join
+                - "/"
+                -
+                  - !Sub "arn:${AWS::Partition}:dynamodb:us-east-2:${AWS::AccountId}:table"
+                  - !ImportValue
+                    'Fn::Sub': "tehBot-${EnvPrefix}ChartTable"
+                  - "index"
+                  - "*"
+              - !Join
+                - "/"
+                -
+                  - !Sub "arn:${AWS::Partition}:dynamodb:us-east-2:${AWS::AccountId}:table"
+                  - !ImportValue
+                    'Fn::Sub': "tehBot-${EnvPrefix}ChartTable"
+          - Effect: "Allow"
+            Action: "dynamodb:ListTables"
+            Resource: "*"
+
+  SteamLobbyTablePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "dynamodb:BatchGetItem"
+              - "dynamodb:BatchWriteItem"
+              - "dynamodb:ConditionCheckItem"
+              - "dynamodb:PutItem"
+              - "dynamodb:DescribeTable"
+              - "dynamodb:DeleteItem"
+              - "dynamodb:GetItem"
+              - "dynamodb:Scan"
+              - "dynamodb:Query"
+              - "dynamodb:UpdateItem"
+              - "dynamodb:DescribeTimeToLive"
+            Resource:
+              - !Join
+                - "/"
+                -
+                  - !Sub "arn:${AWS::Partition}:dynamodb:us-east-2:${AWS::AccountId}:table"
+                  - !ImportValue
+                    'Fn::Sub': "tehBot-${EnvPrefix}SteamLobbyTable"
+                  - "index"
+                  - "*"
+              - !Join
+                - "/"
+                -
+                  - !Sub "arn:${AWS::Partition}:dynamodb:us-east-2:${AWS::AccountId}:table"
+                  - !ImportValue
+                    'Fn::Sub': "tehBot-${EnvPrefix}SteamLobbyTable"
+          - Effect: "Allow"
+            Action: "dynamodb:ListTables"
+            Resource: "*"
+
+  WebhookLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal: 
+                Service: "lambda.amazonaws.com"
+              Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - !Ref LoggingPolicy
+        - !Ref SecretsPolicy
+        - !Ref SettingsTablePolicy
+  
+  # WebLambdaRole:
+  #   Type: AWS::IAM::Role
+  #   Properties:
+  #     AssumeRolePolicyDocument:
+  #         Version: "2012-10-17"
+  #         Statement:
+  #           - Effect: "Allow"
+  #             Principal: 
+  #               Service: "lambda.amazonaws.com"
+  #             Action: "sts:AssumeRole"
+  #     ManagedPolicyArns:
+  #       - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+  #       - !Ref LoggingPolicy
+  #       - !Ref SecretsPolicy
+  #       - !Ref SettingsTablePolicy
+  #       - !Ref QuotesTablePolicy
+  #       # - !Ref S3TemplateBucketPolicy
+
+  CronLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal: 
+              Service: "lambda.amazonaws.com"
+            Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - !Ref LoggingPolicy
+        - !Ref SecretsPolicy
+        - !Ref SettingsTablePolicy
+        - !Ref SteamLobbyTablePolicy
+        - !Ref S3CacheBucketPolicy
+        - !Ref ApiTablePolicy
+
+  WorkerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal: 
+                Service: "lambda.amazonaws.com"
+              Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - !Ref LoggingPolicy
+        - !Ref SecretsPolicy
+        - !Ref SettingsTablePolicy
+        - !Ref ChartTablePolicy
+        - !Ref QuotesTablePolicy
+        - !Ref SteamLobbyTablePolicy
+        - !Ref S3CacheBucketPolicy
+
+  APILambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Principal: 
+                Service: "lambda.amazonaws.com"
+              Action: "sts:AssumeRole"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess
+        - !Ref LoggingPolicy
+        - !Ref SecretsPolicy
+        - !Ref SettingsTablePolicy
+        - !Ref ChartTablePolicy
+        - !Ref QuotesTablePolicy
+        - !Ref SteamLobbyTablePolicy
+        - !Ref S3CacheBucketPolicy
+        - !Ref ApiTablePolicy
+
+Outputs:
+  WebhookLambdaRoleArn:
+    Value: !GetAtt [WebhookLambdaRole, Arn]
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}WebhookLambdaRoleArn"
+  # WebLambdaRoleArn:
+  #   Value: !GetAtt [WebLambdaRole, Arn]
+  #   Export:
+  #     Name: !Sub "tehBot-${EnvPrefix}WebLambdaRoleArn"
+  CronLambdaRoleArn:
+    Value: !GetAtt [CronLambdaRole, Arn]
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}CronLambdaRoleArn"
+  WorkerLambdaRoleArn:
+    Value: !GetAtt [WorkerLambdaRole, Arn]
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}WorkerLambdaRoleArn"
+  APILambdaRoleArn:
+    Value: !GetAtt [APILambdaRole, Arn]
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}APILambdaRoleArn"

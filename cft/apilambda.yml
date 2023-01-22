@@ -1,0 +1,70 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  EnvPrefix:
+    Type: String
+    Default: ""
+  Version:
+    Type: String
+  Name:
+    Type: String
+  RootDiscordUserId:
+    Type: String
+  HostedZoneName:
+    Type: String
+
+Conditions:
+  Nonprod: !Not [ !Equals [ !Ref EnvPrefix, "" ] ]
+  # Prod: !Equals [ !Ref EnvPrefix, "" ]
+
+Resources:
+  Lambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        S3Bucket: !ImportValue
+          'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
+        S3Key: !Sub api_${Name}_package_${Version}.zip
+      Handler: lambda_function.lambda_handler
+      Role: !ImportValue
+        'Fn::Sub': "tehBot-${EnvPrefix}APILambdaRoleArn"
+      Runtime: "python3.9"
+      PackageType: Zip
+      Timeout: 15
+      # Layers:
+      #   - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:901920570463:layer:aws-otel-python-amd64-ver-1-11-1:2"
+      # TracingConfig:
+      #   Mode: Active
+      Environment:
+        Variables:
+          SQSQUEUE_INTERACTIONS: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}InteractionQueueUrl"
+          SECRETS_ARN: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}LambdaSecretsArn"
+          DYNAMOTABLE_SETTINGS: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}SettingsTable"
+          DYNAMOTABLE_STEAM_LOBBY: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}SteamLobbyTable"
+          DYNAMOTABLE_CHART: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}ChartTable"
+          DYNAMOTABLE_QUOTES: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}QuotesTable"
+          DYNAMOTABLE_API: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}ApiTable"
+          S3BUCKET_CACHE: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}CacheBucket"
+          ROOT_DISCORD_USER_ID: !Ref RootDiscordUserId
+          WEB_URL: !If
+            - Nonprod
+            - !Sub "https://dev-teh.${HostedZoneName}"
+            - !Sub "https://teh.${HostedZoneName}"
+  LambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !GetAtt Lambda.Arn
+      Principal: apigateway.amazonaws.com
+
+Outputs:
+  LambdaArn:
+    Value: !GetAtt [Lambda, Arn]

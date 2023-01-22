@@ -1,0 +1,15 @@
+{
+    "dev": {
+        "vpc": "",
+        "domain": "",
+        "subnets": "",
+        "cert_arn": "",
+        "us-east-1_cert_arn": "",
+        "root_discord_user_id": "",
+        "guilds": {
+            "name": "id"
+        },
+        "discord_oauth_url": "",
+        "tehbot_api_url": ""
+    }
+}

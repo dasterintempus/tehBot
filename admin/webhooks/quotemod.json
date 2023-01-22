@@ -1,0 +1,172 @@
+{
+    "name": "quotemod",
+    "type": 1,
+    "description": "Manages quotes.",
+    "options": [
+        {
+            "name": "add",
+            "description": "Adds a new quote.",
+            "type": 1,
+            "options": [
+                {
+                    "name": "name",
+                    "description": "Internal name of the quote to add.",
+                    "type": 3,
+                    "required": true
+                },
+                {
+                    "name": "tags",
+                    "description": "Comma seperated list of tags to attach to the new quote.",
+                    "type": 3,
+                    "required": true
+                },
+                {
+                    "name": "imageurl",
+                    "description": "The screenshot image to use.",
+                    "type": 3,
+                    "required": true
+                }
+            ]
+        },
+        {
+            "name": "delete",
+            "description": "Deletes a quote.",
+            "type": 1,
+            "options": [
+                {
+                    "name": "name",
+                    "description": "Internal name of the quote to delete.",
+                    "type": 3,
+                    "required": true
+                }
+            ]
+        },
+        {
+            "name": "print",
+            "description": "Displays a quote by internal name.",
+            "type": 1,
+            "options": [
+                {
+                    "name": "name",
+                    "description": "Internal name of the quote to display.",
+                    "type": 3,
+                    "required": true
+                }
+            ]
+        },
+        {
+            "name": "list",
+            "description": "Lists quotes.",
+            "type": 1,
+            "options": [
+                {
+                    "name": "terms",
+                    "description": "Comma seperated list of search terms to filter to.",
+                    "type": 3
+                }
+            ]
+        },
+        {
+            "name": "modify_tags",
+            "description": "Modifies a quote's tags.",
+            "type": 1,
+            "options": [
+                {
+                    "name": "name",
+                    "description": "Internal name of the quote to delete.",
+                    "type": 3,
+                    "required": true
+                },
+                {
+                    "name": "tags",
+                    "description": "Comma seperated list of tags. This OVERWRITES the previous list!",
+                    "type": 3,
+                    "required": true
+                }
+            ]
+        },
+        {
+            "name": "alias",
+            "description": "Manages quote search aliases.",
+            "type": 2,
+            "options": [
+                {
+                    "name": "add",
+                    "description": "Adds a new quote search alias.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "key",
+                            "description": "Internal key of the alias to add.",
+                            "type": 3,
+                            "required": true
+                        },
+                        {
+                            "name": "values",
+                            "description": "Comma seperated list of alias values to add.",
+                            "type": 3,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "delete",
+                    "description": "Deletes a quote search alias.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "key",
+                            "description": "Internal key of the quote search alias to delete.",
+                            "type": 3,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "print",
+                    "description": "Displays a quote search alias by internal key.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "key",
+                            "description": "Internal key of the quote search alias to display.",
+                            "type": 3,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "list",
+                    "description": "Lists quote search aliases.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "values",
+                            "description": "Comma seperated list of values to filter to.",
+                            "type": 3
+                        }
+                    ]
+                },
+                {
+                    "name": "modify_values",
+                    "description": "Deletes a quote search alias.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "key",
+                            "description": "Internal name of the quote search alias to delete.",
+                            "type": 3,
+                            "required": true
+                        },
+                        {
+                            "name": "values",
+                            "description": "Comma seperated list of values. This OVERWRITES the previous list!",
+                            "type": 3,
+                            "required": true
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

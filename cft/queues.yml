@@ -1,0 +1,52 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  EnvPrefix:
+    Type: String
+    Default: ""
+Resources:
+  InteractionQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 3600
+      VisibilityTimeout: 120
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  InteractionQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+            Action: "SQS:*"
+            Resource: "*"
+          - Effect: Allow
+            Principal:
+              AWS: !ImportValue
+                'Fn::Sub': "tehBot-${EnvPrefix}WebhookLambdaRoleArn"
+            Action: "SQS:SendMessage"
+            Resource: "*"
+          - Effect: Allow
+            Principal:
+              AWS: !ImportValue
+                'Fn::Sub': "tehBot-${EnvPrefix}WorkerLambdaRoleArn"
+            Action:
+              - "SQS:ChangeMessageVisibility"
+              - "SQS:DeleteMessage"
+              - "SQS:ReceiveMessage"
+              - "SQS:GetQueueAttributes"
+            Resource: "*"
+      Queues:
+        - !Ref InteractionQueue
+Outputs:
+  InteractionQueueUrl:
+    Value: !Ref InteractionQueue
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}InteractionQueueUrl"
+  InteractionQueueArn:
+    Value: !GetAtt [InteractionQueue, Arn]
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}InteractionQueueArn"

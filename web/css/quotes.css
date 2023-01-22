@@ -1,0 +1,16 @@
+/* .quote_img {
+    max-width: 50em;
+}; */
+
+/* .quote_tag {
+    padding: ;
+} */
+
+.btn-info {
+    background-color: lightgray;
+    border-color: darkgray;
+    --bs-btn-hover-bg: darkgray;
+    --bs-btn-hover-border-color: black;
+    --bs-btn-active-bg: white;
+    --bs-btn-active-border-color: black;
+}

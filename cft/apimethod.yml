@@ -1,0 +1,122 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  ApiGateway:
+    Type: String
+  ApiResource:
+    Type: String
+  GetLambdaArn:
+    Type: String
+    Default: ""
+  PostLambdaArn:
+    Type: String
+    Default: ""
+  PatchLambdaArn:
+    Type: String
+    Default: ""
+  PutLambdaArn:
+    Type: String
+    Default: ""
+  DeleteLambdaArn:
+    Type: String
+    Default: ""
+  OptionsLambdaArn:
+    Type: String
+
+Conditions:
+  HasGet: !Not [ !Equals [ !Ref GetLambdaArn, "" ] ]
+  HasPost: !Not [ !Equals [ !Ref PostLambdaArn, "" ] ]
+  HasPatch: !Not [ !Equals [ !Ref PatchLambdaArn, "" ] ]
+  HasPut: !Not [ !Equals [ !Ref PutLambdaArn, "" ] ]
+  HasDelete: !Not [ !Equals [ !Ref DeleteLambdaArn, "" ] ]
+
+Resources:
+  GetMethod:
+    Condition: HasGet
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResource
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
+          - LambdaArn: !Ref GetLambdaArn
+  
+  PostMethod:
+    Condition: HasPost
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResource
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
+          - LambdaArn: !Ref PostLambdaArn
+  
+  PatchMethod:
+    Condition: HasPatch
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResource
+      HttpMethod: PATCH
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
+          - LambdaArn: !Ref PatchLambdaArn
+
+  PutMethod:
+    Condition: HasPut
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResource
+      HttpMethod: PUT
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
+          - LambdaArn: !Ref PutLambdaArn
+
+  DeleteMethod:
+    Condition: HasDelete
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResource
+      HttpMethod: DELETE
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
+          - LambdaArn: !Ref DeleteLambdaArn
+
+
+  OptionsMethod:
+    Type: AWS::ApiGateway::Method
+    Properties:
+      RestApiId: !Ref ApiGateway
+      ResourceId: !Ref ApiResource
+      HttpMethod: OPTIONS
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri: !Sub
+          - "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
+          - LambdaArn: !Ref OptionsLambdaArn

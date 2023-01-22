@@ -1,0 +1,74 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  EnvPrefix:
+    Type: String
+    Default: ""
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+  CertificateArn:
+    Type: String
+Resources:
+  InteractionsSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allows HTTP/HTTPS Inbound
+      SecurityGroupIngress:
+        - CidrIp: "0.0.0.0/0"
+          FromPort: 80
+          ToPort: 80
+          IpProtocol: tcp
+        - CidrIp: "0.0.0.0/0"
+          FromPort: 443
+          ToPort: 443
+          IpProtocol: tcp
+      VpcId: !Ref VpcId
+  InteractionsLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: "internet-facing"
+      SecurityGroups:
+        - !Ref InteractionsSecurityGroup
+      Subnets: !Ref SubnetIds
+  InteractionsTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      TargetType: "lambda"
+      Targets:
+        - Id: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}WebhookLambdaArn"
+    DependsOn: InteractionsLambdaPermission
+  InteractionsListenerHttps:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref InteractionsLoadBalancer
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref InteractionsTargetGroup
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref CertificateArn
+  InteractionsListenerHttp:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref InteractionsLoadBalancer
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref InteractionsTargetGroup
+      Port: 80
+      Protocol: HTTP
+  InteractionsLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !ImportValue
+          'Fn::Sub': "tehBot-${EnvPrefix}WebhookLambdaArn"
+      Principal: elasticloadbalancing.amazonaws.com
+Outputs:
+  InteractionsLoadBalancer:
+    Value: !Ref InteractionsLoadBalancer
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}InteractionsLoadBalancer"

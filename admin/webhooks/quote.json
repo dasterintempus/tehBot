@@ -1,0 +1,13 @@
+{
+    "name": "quote",
+    "type": 1,
+    "description": "Displays quotes.",
+    "options": [
+        {
+            "name": "terms",
+            "description": "Terms to search for (can separate by commas if you want to use multiple)",
+            "type": 3,
+            "required": false
+        }
+    ]
+}

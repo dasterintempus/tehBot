@@ -1,0 +1,34 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  EnvPrefix:
+    Type: String
+    Default: ""
+  GuildName:
+    Type: String
+  GuildId:
+    Type: String
+Resources:
+  CronLambdaSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: !Sub "ScheduleRule for ${GuildName} (${EnvPrefix})"
+      ScheduleExpression: "rate(5 minutes)"
+      State: "ENABLED"
+      Targets: 
+        - Arn: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}CronLambdaArn"
+          Id: !Ref GuildName
+          Input: !Sub |
+            {
+              "op": "lobby_update",
+              "guildid": "${GuildId}"
+            }
+  CronLambdaPerms:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !ImportValue
+        'Fn::Sub': "tehBot-${EnvPrefix}CronLambdaArn"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt CronLambdaSchedule.Arn

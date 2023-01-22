@@ -1,0 +1,376 @@
+{
+    "name": "chart",
+    "type": 1,
+    "description": "Manages the alignment chart.",
+    "options": [
+        {
+            "name": "settings",
+            "description": "Manages chart settings.",
+            "type": 2,
+            "options": [
+                {
+                    "name": "faction",
+                    "description": "Sets chart faction info.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "position",
+                            "description": "The faction position to set.",
+                            "type": 3,
+                            "required": true,
+                            "choices": [
+                                {
+                                    "name": "Top",
+                                    "value": "top"
+                                },
+                                {
+                                    "name": "Right",
+                                    "value": "right"
+                                },
+                                {
+                                    "name": "Left",
+                                    "value": "left"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "role",
+                            "description": "The role to use.",
+                            "type": 8,
+                            "required": true
+                        },
+                        {
+                            "name": "imageurl",
+                            "description": "The faction background image to use.",
+                            "type": 3,
+                            "required": true
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "show",
+            "description": "Show the alignment chart.",
+            "type": 1
+        },
+        {
+            "name": "user",
+            "description": "Manages a user's position on the alignment chart.",
+            "type": 2,
+            "options": [
+                {
+                    "name": "add",
+                    "description": "Add a user to the chart.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "user",
+                            "description": "The user to add.",
+                            "type": 6,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "list",
+                    "description": "List all users.",
+                    "type": 1
+                },
+                {
+                    "name": "remove",
+                    "description": "Remove a user from the chart.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "user",
+                            "description": "The user to remove.",
+                            "type": 6,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "print",
+                    "description": "Output a user's position on the chart.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "user",
+                            "description": "The user to print.",
+                            "type": 6,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "reset",
+                    "description": "Reset a user's position on the chart.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "user",
+                            "description": "The user to reset.",
+                            "type": 6,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "place",
+                    "description": "Place a user on the chart.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "user",
+                            "description": "The user to place a variant for.",
+                            "type": 6,
+                            "required": true
+                        },
+                        {
+                            "name": "topamount",
+                            "description": "The user's top role level.",
+                            "type": 10,
+                            "required": true
+                        },
+                        {
+                            "name": "rightamount",
+                            "description": "The user's right role level.",
+                            "type": 10,
+                            "required": true
+                        },
+                        {
+                            "name": "leftamount",
+                            "description": "The user's left role level.",
+                            "type": 10,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "move",
+                    "description": "Move a user on the chart.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "user",
+                            "description": "The user to move.",
+                            "type": 6,
+                            "required": true
+                        },
+                        {
+                            "name": "direction",
+                            "description": "The direction to move this user.",
+                            "type": 3,
+                            "required": true,
+                            "choices": [
+                                {
+                                    "name": "Top",
+                                    "value": "top"
+                                },
+                                {
+                                    "name": "Right",
+                                    "value": "right"
+                                },
+                                {
+                                    "name": "Left",
+                                    "value": "left"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "amount",
+                            "description": "The amount to move the user in the specified direction.",
+                            "type": 10,
+                            "required": true
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "variant",
+            "description": "Manages a user's variants position on the alignment chart.",
+            "type": 2,
+            "options": [
+                {
+                    "name": "add",
+                    "description": "Add a variant of a user to the chart.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "user",
+                            "description": "The user to add a variant for.",
+                            "type": 6,
+                            "required": true
+                        },
+                        {
+                            "name": "variant",
+                            "description": "The variant name to add.",
+                            "type": 3,
+                            "required": true
+                        },
+                        {
+                            "name": "avatarurl",
+                            "description": "The URL to find the variant's avatar at.",
+                            "type": 3,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "remove",
+                    "description": "Remove a variant of a user from the chart.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "user",
+                            "description": "The user to remove a variant for.",
+                            "type": 6,
+                            "required": true
+                        },
+                        {
+                            "name": "variant",
+                            "description": "The variant name to remove.",
+                            "type": 3,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "list",
+                    "description": "Output the variants of a user.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "user",
+                            "description": "The user to list variants for.",
+                            "type": 6,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "print",
+                    "description": "Output a variant of a user's position on the chart.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "user",
+                            "description": "The user to print a variant for.",
+                            "type": 6,
+                            "required": true
+                        },
+                        {
+                            "name": "variant",
+                            "description": "The variant name to print.",
+                            "type": 3,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "reset",
+                    "description": "Reset a variant of a user's position on the chart.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "user",
+                            "description": "The user to reset a variant for.",
+                            "type": 6,
+                            "required": true
+                        },
+                        {
+                            "name": "variant",
+                            "description": "The variant name to reset.",
+                            "type": 3,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "place",
+                    "description": "Place a variant of a user on the chart.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "user",
+                            "description": "The user to place a variant for.",
+                            "type": 6,
+                            "required": true
+                        },
+                        {
+                            "name": "variant",
+                            "description": "The variant name to place.",
+                            "type": 3,
+                            "required": true
+                        },
+                        {
+                            "name": "topamount",
+                            "description": "The variant's top role level.",
+                            "type": 10,
+                            "required": true
+                        },
+                        {
+                            "name": "rightamount",
+                            "description": "The variant's right role level.",
+                            "type": 10,
+                            "required": true
+                        },
+                        {
+                            "name": "leftamount",
+                            "description": "The variant's left role level.",
+                            "type": 10,
+                            "required": true
+                        }
+                    ]
+                },
+                {
+                    "name": "move",
+                    "description": "Move a variant of a user on the chart.",
+                    "type": 1,
+                    "options": [
+                        {
+                            "name": "user",
+                            "description": "The user to move a variant for.",
+                            "type": 6,
+                            "required": true
+                        },
+                        {
+                            "name": "variant",
+                            "description": "The variant name to move.",
+                            "type": 3,
+                            "required": true
+                        },
+                        {
+                            "name": "direction",
+                            "description": "The direction to move this user.",
+                            "type": 3,
+                            "required": true,
+                            "choices": [
+                                {
+                                    "name": "Top",
+                                    "value": "top"
+                                },
+                                {
+                                    "name": "Right",
+                                    "value": "right"
+                                },
+                                {
+                                    "name": "Left",
+                                    "value": "left"
+                                }
+                            ]
+                        },
+                        {
+                            "name": "amount",
+                            "description": "The amount to move the user in the specified direction.",
+                            "type": 10,
+                            "required": true
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}

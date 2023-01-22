@@ -1,0 +1,76 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  EnvPrefix:
+    Type: String
+    Default: ""
+  MainRegion:
+    Type: String
+    Default: us-east-2
+  OffRegion:
+    Type: String
+    Default: us-west-1
+
+Conditions:
+  InMainRegion: !Equals [!Ref "AWS::Region", !Ref "MainRegion"]
+  # InOffRegion: !Equals [!Ref "AWS::Region", !Ref "OffRegion"]
+
+Resources:
+  BackupVault:
+    Type: AWS::Backup::BackupVault
+    Properties:
+      BackupVaultName: !Sub "tehBot-${EnvPrefix}Backups"
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  
+  BackupPlan:
+    Type: AWS::Backup::BackupPlan
+    Properties:
+      BackupPlan:
+        BackupPlanName: !Sub "tehBot-${EnvPrefix}BackupPlan"
+        BackupPlanRule:
+          - RuleName: WeeklyBackups
+            TargetBackupVault: !Ref BackupVault
+            ScheduleExpression: "cron(0 10 ? * 3 *)"
+            StartWindowMinutes: 480
+            CompletionWindowMinutes: 10080
+            Lifecycle:
+              DeleteAfterDays: 84
+            CopyActions: !If 
+              - InMainRegion
+              -
+                - DestinationBackupVaultArn: !Sub "arn:${AWS::Partition}:backup:${OffRegion}:${AWS::AccountId}:backup-vault:tehBot-${EnvPrefix}Backups"
+                  Lifecycle:
+                    DeleteAfterDays: 84
+              - 
+                - DestinationBackupVaultArn: !Sub "arn:${AWS::Partition}:backup:${MainRegion}:${AWS::AccountId}:backup-vault:tehBot-${EnvPrefix}Backups"
+                  Lifecycle:
+                    DeleteAfterDays: 84
+  
+  BackupSelectionDynamo:
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref BackupPlan
+      BackupSelection:
+        IamRoleArn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/AWSBackupDefaultServiceRole"
+        SelectionName: DynamoBackups
+        ListOfTags:
+          - ConditionKey: "tehBotEnv"
+            ConditionValue: !Ref EnvPrefix
+            ConditionType: STRINGEQUALS
+        Resources:
+          - !Sub "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/*"
+
+  BackupSelectionBucket:
+    Condition: InMainRegion
+    Type: AWS::Backup::BackupSelection
+    Properties:
+      BackupPlanId: !Ref BackupPlan
+      BackupSelection:
+        IamRoleArn: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/service-role/AWSBackupDefaultServiceRole"
+        SelectionName: CacheBucketBackups
+        Resources:
+          - !Sub 
+            - "arn:${AWS::Partition}:s3:::${BucketName}"
+            - BucketName: !ImportValue
+                'Fn::Sub': "tehBot-${EnvPrefix}CacheBucket"

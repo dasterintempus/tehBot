@@ -1,0 +1,108 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  EnvPrefix:
+    Type: String
+    Default: ""
+Resources:
+  ChartTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: EntryId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: EntryId
+          KeyType: HASH
+      Tags:
+        - Key: tehBotEnv
+          Value: !Ref EnvPrefix
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+      
+  SteamLobbyTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: EntryId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: EntryId
+          KeyType: HASH
+      Tags:
+        - Key: tehBotEnv
+          Value: !Ref EnvPrefix
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+    
+  SettingsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: EntryId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: EntryId
+          KeyType: HASH
+      Tags:
+        - Key: tehBotEnv
+          Value: !Ref EnvPrefix
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  
+  QuotesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: EntryId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: EntryId
+          KeyType: HASH
+      Tags:
+        - Key: tehBotEnv
+          Value: !Ref EnvPrefix
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  
+  ApiTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: EntryId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: EntryId
+          KeyType: HASH
+      Tags:
+        - Key: tehBotEnv
+          Value: !Ref EnvPrefix
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+
+Outputs:
+  ChartTable:
+    Value: !Ref ChartTable
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}ChartTable"
+  SteamLobbyTable:
+    Value: !Ref SteamLobbyTable
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}SteamLobbyTable"
+  SettingsTable:
+    Value: !Ref SettingsTable
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}SettingsTable"
+  QuotesTable:
+    Value: !Ref QuotesTable
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}QuotesTable"
+  ApiTable:
+    Value: !Ref ApiTable
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}ApiTable"

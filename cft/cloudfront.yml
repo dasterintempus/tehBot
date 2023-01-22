@@ -1,0 +1,147 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  EnvPrefix:
+    Type: String
+    Default: ""
+  UsEastOneCertificateArn:
+    Type: String
+  HostedZoneName:
+    Type: String
+    Default: "dasterin.net"
+  # WebACLArn:
+  #   Type: String
+
+Conditions:
+  Nonprod: !Not [ !Equals [ !Ref EnvPrefix, "" ] ]
+  # Prod: !Equals [ !Ref EnvPrefix, "" ]
+
+Resources:
+  AccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties: 
+      CloudFrontOriginAccessIdentityConfig: 
+        Comment: "teh website"
+  
+  WebAppBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !ImportValue
+        'Fn::Sub': "tehBot-${EnvPrefix}WebBucket"
+      PolicyDocument:
+        Statement:
+        - Action: s3:GetObject
+          Effect: Allow
+          Principal:
+            CanonicalUser: !GetAtt AccessIdentity.S3CanonicalUserId
+          Resource: !Sub 
+            - "arn:${AWS::Partition}:s3:::${BucketName}/*"
+            - BucketName: !ImportValue
+                'Fn::Sub': "tehBot-${EnvPrefix}WebBucket"
+
+  CachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        DefaultTTL: 60
+        MaxTTL: 60
+        MinTTL: 60
+        Name: !If
+            - Nonprod
+            - DevWebBucketDistributionCachePolicy
+            - WebBucketDistributionCachePolicy
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          EnableAcceptEncodingGzip: false
+          EnableAcceptEncodingBrotli: false
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+
+  # ResponseHeadersPolicy:
+  #   Type: AWS::CloudFront::ResponseHeadersPolicy
+  #   Properties:
+  #     ResponseHeadersPolicyConfig:
+  #       Name: !If
+  #         - Nonprod
+  #         - "dev-tehwebheader"
+  #         - "tehwebheader"
+  #       CorsConfig:
+  #         AccessControlExposeHeaders:
+  #           Items:
+  #             - "*"
+  #         AccessControlAllowCredentials: false
+  #         AccessControlAllowHeaders:
+  #           Items:
+  #             - "*"
+  #         AccessControlAllowMethods:
+  #           Items:
+  #             - POST
+  #             - GET
+  #             - HEAD
+  #             - OPTIONS
+  #             - PUT
+  #             - PATCH
+  #             - DELETE
+  #         AccessControlAllowOrigins:
+  #           Items:
+  #             - !If
+  #               - Nonprod
+  #               - !Sub "https://${EnvPrefix}-api.${HostedZoneName}"
+  #               - !Sub "https://api.${HostedZoneName}"
+  #         OriginOverride: false
+
+  Distribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig: 
+        Enabled: true
+        Aliases:
+          - !If
+            - Nonprod
+            - !Join ["." , ["dev-teh", !Ref HostedZoneName]]
+            - !Join ["." , ["teh", !Ref HostedZoneName]]
+        DefaultRootObject: "index.html"
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+            # - OPTIONS
+          TargetOriginId: "tehweb"
+          CachePolicyId: !Ref CachePolicy
+          # ResponseHeadersPolicyId: !Ref ResponseHeadersPolicy
+          ViewerProtocolPolicy: "redirect-to-https"
+        Origins:
+          - Id: "tehweb"
+            DomainName: !ImportValue
+              'Fn::Sub': "tehBot-${EnvPrefix}WebBucketDomainName"
+            S3OriginConfig:
+              OriginAccessIdentity: !Sub
+                - "origin-access-identity/cloudfront/${AccessIdentity}"
+                - AccessIdentity: !Ref AccessIdentity
+        IPV6Enabled: false
+        ViewerCertificate:
+          AcmCertificateArn: !Ref UsEastOneCertificateArn
+          MinimumProtocolVersion: TLSv1.2_2021
+          SslSupportMethod: sni-only
+        # WebACLId: !Ref WebACLArn
+    DependsOn:
+      - WebAppBucketPolicy
+  
+  Route53RecordSetGroup:
+    Type: AWS::Route53::RecordSetGroup
+    Properties:
+      HostedZoneName: !Sub '${HostedZoneName}.'
+      RecordSets:
+      - Name: !If
+          - Nonprod
+          - !Join ["." , ["dev-teh", !Ref HostedZoneName]]
+          - !Join ["." , ["teh", !Ref HostedZoneName]]
+        Type: 'A'
+        AliasTarget:
+          DNSName: !GetAtt 'Distribution.DomainName'
+          EvaluateTargetHealth: false
+          # The  following HosteZoneId is always used for alias records pointing to CF.
+          HostedZoneId: 'Z2FDTNDATAQYW2'

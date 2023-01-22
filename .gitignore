@@ -1,0 +1,14 @@
+venv
+*/venv/*
+*.zip
+*.png
+secrets.json
+local.json
+*.legacy.json
+**/dist
+**/*.egg-info
+__pycache__
+*.whl
+assets
+*/test/*
+admin/*.txt

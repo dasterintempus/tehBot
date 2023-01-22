@@ -1,0 +1,5 @@
+boto3
+requests
+docker
+jinja2
+build
