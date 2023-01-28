@@ -213,24 +213,27 @@ def build_tehbot_package(ctx):
         
         ctx["tehbot_package_built"] = True
         print(f"{datetime.datetime.now().isoformat()} - Completed building tehbot python package")
-        shutil.rmtree("../lambdas/shared_deps") #clear the shared deps to reinstall once.
-        os.mkdir("../lambdas/shared_deps") #remake the folder
+        deps_path = "../lambdas/shared_deps_" + ctx["now"].replace(":","_")
+        if os.path.exists(deps_path):
+            shutil.rmtree(deps_path) #clear the shared deps dir if it already exists.
+        os.mkdir(deps_path) #remake the folder
 
 def package_lambda(ctx, lambda_name, lambda_bucket, lambda_version):
     s3 = ctx["aws"].client("s3")
 
     try:
-        os.remove(f"../lambdas/{lambda_name}_package_{lambda_version}.zip")
+        os.remove(f"../lambdas/{lambda_name}/{lambda_name}_package_{lambda_version}.zip")
     except:
         pass
 
     try:
+        deps_path = "../lambdas/shared_deps_" + ctx["now"].replace(":","_")
         logs = ctx["docker"].containers.run(ctx["docker_lambdabuilder_image"],
             command=[f"{lambda_name}_package_{lambda_version}", "/usr/src/pylib/tehbot/tehbot-0.0.1-py3-none-any.whl"],
             volumes=[
                 os.path.abspath(f"../lambdas/{lambda_name}")+":/usr/src/app",
                 os.path.abspath("../packages/tehbot/dist")+":/usr/src/pylib/tehbot",
-                os.path.abspath("../lambdas/shared_deps")+":/usr/src/shared_deps"
+                os.path.abspath(deps_path)+":/usr/src/shared_deps"
             ],
             remove=True
         )
@@ -247,7 +250,7 @@ def package_lambda(ctx, lambda_name, lambda_bucket, lambda_version):
     with open(f"../lambdas/{lambda_name}/{lambda_name}_package_{lambda_version}.zip", "rb") as f:
         s3.put_object(Bucket=lambda_bucket, Key=f"{lambda_name}_package_{lambda_version}.zip", Body=f)
     
-    os.remove(f"../lambdas/{lambda_name}_package_{lambda_version}.zip")
+    os.remove(f"../lambdas/{lambda_name}/{lambda_name}_package_{lambda_version}.zip")
 
 @stack_handler("lambdas")
 def stack_lambdas(ctx):
@@ -408,3 +411,7 @@ if __name__ == "__main__":
             print(f"Error in stack: {stack}")
             traceback.print_exc()
             sys.exit(1)
+
+    deps_path = "../lambdas/shared_deps_" + ctx["now"].replace(":","_")
+    if os.path.exists(deps_path):
+        shutil.rmtree(deps_path) #clear the shared deps dir when done.
