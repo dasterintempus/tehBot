@@ -44,6 +44,6 @@ def lambda_handler(event, context):
     #     quote_list = Quote.find_all(guild_id)
     quote_list = Quote.find_all(guild_id)
     quote_list.sort(key=lambda q: q.name)
-    response_body = {"total_hits": len(quote_list), "quotes": [quote.to_dict() for quote in quote_list[offset:offset+count]]}
+    response_body = {"total_hits": len(quote_list), "quotes": [quote.to_dict() for quote in quote_list]}
 
     return make_response(200, response_body)

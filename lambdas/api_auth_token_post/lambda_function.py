@@ -8,7 +8,7 @@ from tehbot.discord import build_oauth_client, api as discordapi
 from tehbot.util import CONTEXT
 from tehbot.api import make_response
 from tehbot.api.token import Token
-import pprint
+import base64
 import traceback
 
 import logging
@@ -31,7 +31,13 @@ def lambda_handler(event, context):
     CONTEXT["cache"] = {}
 
     try:
-        request_body = json.loads(event["body"])
+        event_body = event["body"]
+        if event["isBase64Encoded"]:
+            event_body = base64.b64decode(event_body)
+    except:
+        return make_response(500, {"error": {"code": "ProcessingError", "msg": "Unable to load event body..."}})
+    try:
+        request_body = json.loads(event_body)
     except:
         return make_response(400, {"error": {"code": "InvalidJson", "msg": "Request body was not valid JSON."}})
 

@@ -16,6 +16,7 @@ import requests
 import io
 import jinja2
 import docker
+import shutil
 
 import adminutils
 
@@ -85,11 +86,15 @@ def upsert_stack(ctx, stackname, templatepath, args, **kwargs):
         cfn.describe_stacks(StackName=stackname)
     except botocore.exceptions.ClientError as e:
         if e.response["Error"]["Code"] == "ValidationError":
-            return create_stack(ctx, stackname, templatepath, args, **kwargs)
+            exists = False
         else:
             raise
     else:
+        exists = True
+    if exists is True:
         return update_stack(ctx, stackname, templatepath, args, **kwargs)
+    elif exists is False:
+        return create_stack(ctx, stackname, templatepath, args, **kwargs)
 
 def stack_handler(name):
     def decorator(func):
@@ -208,17 +213,25 @@ def build_tehbot_package(ctx):
         
         ctx["tehbot_package_built"] = True
         print(f"{datetime.datetime.now().isoformat()} - Completed building tehbot python package")
+        shutil.rmtree("../lambdas/shared_deps") #clear the shared deps to reinstall once.
+        os.mkdir("../lambdas/shared_deps") #remake the folder
 
 def package_lambda(ctx, lambda_name, lambda_bucket, lambda_version):
     s3 = ctx["aws"].client("s3")
+
     try:
         os.remove(f"../lambdas/{lambda_name}_package_{lambda_version}.zip")
     except:
         pass
+
     try:
         logs = ctx["docker"].containers.run(ctx["docker_lambdabuilder_image"],
             command=[f"{lambda_name}_package_{lambda_version}", "/usr/src/pylib/tehbot/tehbot-0.0.1-py3-none-any.whl"],
-            volumes=[os.path.abspath(f"../lambdas/{lambda_name}")+":/usr/src/app", os.path.abspath("../packages/tehbot/dist")+":/usr/src/pylib/tehbot"],
+            volumes=[
+                os.path.abspath(f"../lambdas/{lambda_name}")+":/usr/src/app",
+                os.path.abspath("../packages/tehbot/dist")+":/usr/src/pylib/tehbot",
+                os.path.abspath("../lambdas/shared_deps")+":/usr/src/shared_deps"
+            ],
             remove=True
         )
     except docker.errors.ContainerError:
@@ -233,17 +246,23 @@ def package_lambda(ctx, lambda_name, lambda_bucket, lambda_version):
     #     sys.exit(1)
     with open(f"../lambdas/{lambda_name}/{lambda_name}_package_{lambda_version}.zip", "rb") as f:
         s3.put_object(Bucket=lambda_bucket, Key=f"{lambda_name}_package_{lambda_version}.zip", Body=f)
+    
+    os.remove(f"../lambdas/{lambda_name}_package_{lambda_version}.zip")
 
 @stack_handler("lambdas")
 def stack_lambdas(ctx):
-    build_tehbot_package(ctx)
-    build_lambdabuilder_docker(ctx)
-    
     lambda_bucket = adminutils.get_cft_resource(ctx["args"].env, "Buckets", "LambdaBucket")
-    lambda_version = ctx["now"]
-    for lambda_name in ("worker", "webhook", "cron"):
-        package_lambda(ctx, lambda_name, lambda_bucket, lambda_version)
+    if ctx["args"].lambda_version is None:
+        build_tehbot_package(ctx)
+        build_lambdabuilder_docker(ctx)
+        
+        lambda_version = ctx["now"]
+        for lambda_name in ("worker", "webhook", "cron"):
+            package_lambda(ctx, lambda_name, lambda_bucket, lambda_version)
+        time.sleep(1)
 
+    else:
+        lambda_version = ctx["args"].lambda_version
     stackname = f"tehBot-{ctx['args'].env}Lambdas"
     params = {}
     params["WebhookVersion"] = lambda_version
@@ -287,41 +306,49 @@ def stack_queues(ctx):
 
 
 def deploy_api(ctx):
-    gateway_id = adminutils.get_cft_resource(ctx["args"].env, "ApiGateway", "ApiGateway")
-    apigateway = ctx["aws"].client("apigateway")
+    api_id = adminutils.get_cft_resource(ctx["args"].env, "ApiGateway", "ApiGateway")
+    apigateway = ctx["aws"].client("apigatewayv2")
     domain_name = "api." + ctx["local"]["domain"]
     if len(ctx["args"].env) > 0:
         domain_name = ctx["args"].env + "-" + domain_name
     try:
-        apigateway.delete_base_path_mapping(domainName=domain_name, basePath='(none)')
+        mappings = apigateway.get_api_mappings(DomainName=domain_name)["Items"]
+        for mapping in mappings:
+            if mapping["ApiId"] == api_id:
+                apigateway.delete_api_mapping(ApiMappingId=mapping["ApiMappingId"], DomainName=domain_name)
     except:
         pass
-    deployments = apigateway.get_deployments(restApiId=gateway_id)["items"]
-    for deployment in deployments:
-        stages = apigateway.get_stages(restApiId=gateway_id, deploymentId=deployment["id"])["item"]
-        for stage in stages:
-            apigateway.delete_stage(restApiId=gateway_id, stageName=stage["stageName"])
-        apigateway.delete_deployment(restApiId=gateway_id, deploymentId=deployment["id"])
 
-    new_deployment = apigateway.create_deployment(restApiId=gateway_id, stageName="live", stageDescription=datetime.datetime.now().isoformat())
-    apigateway.create_base_path_mapping(domainName=domain_name, restApiId=gateway_id, stage="live")
+    stages = apigateway.get_stages(ApiId=api_id)["Items"]
+    for stage in stages:
+        apigateway.delete_stage(ApiId=api_id, StageName=stage["StageName"])
+    # deployments = apigateway.get_deployments(ApiId=api_id)["Items"]
+    # for deployment in deployments:
+    #     apigateway.delete_deployment(ApiId=api_id, deploymentId=deployment["DeploymentId"])
+
+    new_stage = apigateway.create_stage(ApiId=api_id, StageName="live")
+    apigateway.create_api_mapping(DomainName=domain_name, ApiId=api_id, Stage="live")
 
 @stack_handler("apigateway")
 def stack_apigateway(ctx):
-    build_tehbot_package(ctx)
-    build_lambdabuilder_docker(ctx)
-
     lambda_bucket = adminutils.get_cft_resource(ctx["args"].env, "Buckets", "LambdaBucket")
-    lambda_version = ctx["now"]
-    for lambda_dir in glob.glob("../lambdas/api_*"):
-        lambda_name = os.path.basename(lambda_dir)
-        package_lambda(ctx, lambda_name, lambda_bucket, lambda_version) 
+    if ctx["args"].lambda_version is None:
+        build_tehbot_package(ctx)
+        build_lambdabuilder_docker(ctx)
+
+        lambda_version = ctx["now"]
+        for lambda_dir in glob.glob("../lambdas/api_*"):
+            lambda_name = os.path.basename(lambda_dir)
+            package_lambda(ctx, lambda_name, lambda_bucket, lambda_version) 
+    else:
+        lambda_version = ctx["args"].lambda_version
+    
     s3 = ctx["aws"].client("s3")
     with open(f"../cft/apilambda.yml", "rb") as f:
         s3.put_object(Bucket=lambda_bucket, Key=f"apilambda_cft_{lambda_version}.yml", Body=f)
     with open(f"../cft/apimethod.yml", "rb") as f:
         s3.put_object(Bucket=lambda_bucket, Key=f"apimethod_cft_{lambda_version}.yml", Body=f)
-
+    time.sleep(1)
 
     stackname = f"tehBot-{ctx['args'].env}ApiGateway"
     params = {}
@@ -330,7 +357,7 @@ def stack_apigateway(ctx):
     params["LambdaVersion"] = lambda_version
     params["RootDiscordUserId"] = ctx["local"]["root_discord_user_id"]
     upsert_stack(ctx, stackname, "../cft/apigateway.yml", params, Capabilities=["CAPABILITY_IAM"])
-    deploy_api(ctx)
+    # deploy_api(ctx)
 
 
 
@@ -350,6 +377,7 @@ if __name__ == "__main__":
     parser.add_argument("env")
     parser.add_argument("action")
     parser.add_argument("--stack", dest="stacks", action="append", default=[])
+    parser.add_argument("--lambda-version", dest="lambda_version", action="store", default=None)
     args = parser.parse_args()
 
     if args.action != "upsert":
