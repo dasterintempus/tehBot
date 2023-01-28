@@ -16,7 +16,7 @@
                 },
                 {
                     "name": "tags",
-                    "description": "Comma seperated list of tags to attach to the new quote.",
+                    "description": "Comma separated list of tags to attach to the new quote.",
                     "type": 3,
                     "required": true
                 },
@@ -61,7 +61,7 @@
             "options": [
                 {
                     "name": "terms",
-                    "description": "Comma seperated list of search terms to filter to.",
+                    "description": "Comma separated list of search terms to filter to.",
                     "type": 3
                 }
             ]
@@ -79,7 +79,7 @@
                 },
                 {
                     "name": "tags",
-                    "description": "Comma seperated list of tags. This OVERWRITES the previous list!",
+                    "description": "Comma separated list of tags. This OVERWRITES the previous list!",
                     "type": 3,
                     "required": true
                 }
@@ -103,7 +103,7 @@
                         },
                         {
                             "name": "values",
-                            "description": "Comma seperated list of alias values to add.",
+                            "description": "Comma separated list of alias values to add.",
                             "type": 3,
                             "required": true
                         }
@@ -142,7 +142,7 @@
                     "options": [
                         {
                             "name": "values",
-                            "description": "Comma seperated list of values to filter to.",
+                            "description": "Comma separated list of values to filter to.",
                             "type": 3
                         }
                     ]
@@ -160,7 +160,7 @@
                         },
                         {
                             "name": "values",
-                            "description": "Comma seperated list of values. This OVERWRITES the previous list!",
+                            "description": "Comma separated list of values. This OVERWRITES the previous list!",
                             "type": 3,
                             "required": true
                         }
