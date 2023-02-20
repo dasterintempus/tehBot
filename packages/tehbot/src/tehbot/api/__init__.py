@@ -17,7 +17,7 @@ def make_response(code, body=None, headers=None):
     response["statusCode"] = code
     response["headers"] = headers
     response["isBase64Encoded"] = False
-    response["multiValueHeaders"] = {}
+    # response["multiValueHeaders"] = {}
     response["body"] = json.dumps(body)
     return response
 

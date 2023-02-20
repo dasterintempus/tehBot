@@ -1,0 +1,138 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Parameters:
+  EnvPrefix:
+    Type: String
+    Default: ""
+  HostedZoneName:
+    Type: String
+  LambdaVersion:
+    Type: String
+  RootDiscordUserId:
+    Type: String
+
+Resources:
+  CronLambdaTokenCleanupSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: !Sub "ScheduleRule for token_cleanup (${EnvPrefix})"
+      ScheduleExpression: "rate(1 hour)"
+      State: "ENABLED"
+      Targets: 
+        - Arn: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}CronLambdaArn"
+          Id: "token_cleanup"
+          Input: |
+            {
+              "op": "token_cleanup"
+            }
+  CronLambdaPerms:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !ImportValue
+        'Fn::Sub': "tehBot-${EnvPrefix}CronLambdaArn"
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt CronLambdaTokenCleanupSchedule.Arn
+
+  AuthTokenPostLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - "https://s3.amazonaws.com/${LambdaBucket}/apilambda_cft_${LambdaVersion}.yml"
+        - LambdaBucket: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
+          LambdaVersion: !Ref LambdaVersion
+      Parameters:
+        EnvPrefix: !Ref EnvPrefix
+        Version: !Ref LambdaVersion
+        Name: auth_token_post
+        RootDiscordUserId: !Ref RootDiscordUserId
+        HostedZoneName: !Ref HostedZoneName
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  
+  QuotesGetLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - "https://s3.amazonaws.com/${LambdaBucket}/apilambda_cft_${LambdaVersion}.yml"
+        - LambdaBucket: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
+          LambdaVersion: !Ref LambdaVersion
+      Parameters:
+        EnvPrefix: !Ref EnvPrefix
+        Version: !Ref LambdaVersion
+        Name: quotes_get
+        RootDiscordUserId: !Ref RootDiscordUserId
+        HostedZoneName: !Ref HostedZoneName
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+  
+  QuotesPostLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - "https://s3.amazonaws.com/${LambdaBucket}/apilambda_cft_${LambdaVersion}.yml"
+        - LambdaBucket: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
+          LambdaVersion: !Ref LambdaVersion
+      Parameters:
+        EnvPrefix: !Ref EnvPrefix
+        Version: !Ref LambdaVersion
+        Name: quotes_post
+        RootDiscordUserId: !Ref RootDiscordUserId
+        HostedZoneName: !Ref HostedZoneName
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+
+  QuotesSearchPostLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - "https://s3.amazonaws.com/${LambdaBucket}/apilambda_cft_${LambdaVersion}.yml"
+        - LambdaBucket: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
+          LambdaVersion: !Ref LambdaVersion
+      Parameters:
+        EnvPrefix: !Ref EnvPrefix
+        Version: !Ref LambdaVersion
+        Name: quotes_search_post
+        RootDiscordUserId: !Ref RootDiscordUserId
+        HostedZoneName: !Ref HostedZoneName
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+
+  QuoteNamePatchLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - "https://s3.amazonaws.com/${LambdaBucket}/apilambda_cft_${LambdaVersion}.yml"
+        - LambdaBucket: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
+          LambdaVersion: !Ref LambdaVersion
+      Parameters:
+        EnvPrefix: !Ref EnvPrefix
+        Version: !Ref LambdaVersion
+        Name: quote_name_patch
+        RootDiscordUserId: !Ref RootDiscordUserId
+        HostedZoneName: !Ref HostedZoneName
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+
+  QuoteNameDeleteLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - "https://s3.amazonaws.com/${LambdaBucket}/apilambda_cft_${LambdaVersion}.yml"
+        - LambdaBucket: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
+          LambdaVersion: !Ref LambdaVersion
+      Parameters:
+        EnvPrefix: !Ref EnvPrefix
+        Version: !Ref LambdaVersion
+        Name: quote_name_delete
+        RootDiscordUserId: !Ref RootDiscordUserId
+        HostedZoneName: !Ref HostedZoneName
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete

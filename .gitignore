@@ -13,3 +13,5 @@ assets
 */test/*
 admin/*.txt
 lambdas/shared_deps*
+.openapi-generator*
+docs

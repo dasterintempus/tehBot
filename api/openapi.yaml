@@ -1,0 +1,297 @@
+---
+openapi: 3.0.3
+info:
+  title: "tehbot-{{env_prefix}}Api"
+  description: |-
+    TBD
+  contact:
+    email: "{{contact_email}}"
+  license:
+    name: MIT
+    url: https://mit-license.org/
+  version: 0.1.0
+tags:
+  - name: quotes
+    description: Management and searching of Quotes
+  - name: auth
+    description: Auth token operations
+  - name: webhook
+    description: Webhook receivers for other services
+x-amazon-apigateway-cors:
+  allowOrigins:
+    - "{{tehbot_api_url}}"
+  allowCredentials: true
+  exposeHeaders:
+    - "x-teh-auth"
+    - "content-type"
+  allowHeaders:
+    - "x-teh-auth"
+    - "content-type"
+  allowMethods:
+    - GET
+    - POST
+    - PATCH
+    - DELETE
+  maxAge: 3600
+servers:
+  - url: "{{tehbot_api_url}}"
+paths:
+  /discord-interactions:
+    post:
+      tags:
+        - webhook
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscordInteractionResponse"
+        '400':
+          description: Failed operation
+        '401':
+          description: Unauthorized operation
+      x-amazon-apigateway-integration:
+        uri: "{{lambda_discord_webhook}}"
+        httpMethod: "POST"
+        passthroughBehavior: "when_no_templates"
+        payloadFormatVersion: 2.0
+        type: "aws_proxy"
+  /guilds/{guild_id}/quotes:
+    get:
+      parameters:
+        - name: guild_id
+          in: path
+          description: Guild ID
+          required: true
+          schema:
+            type: string
+      tags:
+        - quotes
+      summary: Get all quotes.
+      description: Get all quotes for this guild. See /guilds/{guild_id}/quotes/search for searching.
+      operationId: getQuotes
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Quote"
+        '400':
+          description: Payload Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        '401':
+          description: Token Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        '403':
+          description: Authentication Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+      x-amazon-apigateway-integration:
+        uri: "{{lambda_quotes_get}}"
+        httpMethod: "POST"
+        passthroughBehavior: "when_no_templates"
+        payloadFormatVersion: 2.0
+        type: "aws_proxy"
+      # security:
+      #   - token_auth: []
+    post:
+      parameters:
+        - name: guild_id
+          in: path
+          description: Guild ID
+          required: true
+          schema:
+            type: string
+      tags:
+        - quotes
+      summary: Add a new quote.
+      description: Create a new quote for this guild.
+      operationId: postQuote
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Quote"
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  quote:
+                    $ref: "#/components/schemas/Quote"
+        '400':
+          description: Payload Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        '401':
+          description: Token Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        '403':
+          description: Authentication Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+      x-amazon-apigateway-integration:
+        uri: "{{lambda_quotes_post}}"
+        httpMethod: "POST"
+        passthroughBehavior: "when_no_templates"
+        payloadFormatVersion: 2.0
+        type: "aws_proxy"
+      # security:
+      #   - token_auth: []
+  /auth/token:
+    post:
+      tags:
+        - auth
+      summary: Request an auth token
+      description: Request a tehBot auth token via Discord OAuth callback
+      operationId: authToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthTokenRequest"
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenResponse"
+        '400':
+          description: Payload Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        '403':
+          description: Authentication Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        '500':
+          description: Processing Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+      x-amazon-apigateway-integration:
+        uri: "{{lambda_auth_token_post}}"
+        httpMethod: "POST"
+        passthroughBehavior: "when_no_templates"
+        payloadFormatVersion: 2.0
+        type: "aws_proxy"
+        
+components:
+  schemas:
+    AuthTokenRequest:
+      type: object
+      properties:
+        code:
+          type: string
+      example:
+        code: "discord_oauth_callback_value"
+    AuthTokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: "The tehBoth auth token."
+        user_display_name:
+          type: string
+          description: "Discord display name for this User."
+        user_avatar:
+          type: string
+          description: "Discord CDN url for User's avatar."
+        guilds:
+          type: array
+          description: "An array of Guilds that this User is authenticated for."
+          items:
+            $ref: '#/components/schemas/Guild'
+    Guild:
+      type: object
+      properties:
+        id:
+          type: string
+          description: "The Discord API identifier for the Guild"
+        name:
+          type: string
+          description: "The name of the Guild"
+        icon:
+          type: string
+          description: "Discord CDN url for Guilds's icon"
+    Quote:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "The name of the quote"
+        tags:
+          type: array
+          items:
+            type: string
+          description: "A list of tags"
+        url:
+          type: string
+          description: "URL of the quote image"
+    APIError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: "An error code string."
+            msg:
+              type: string
+              description: "A user-friendly error message."
+    DiscordInteractionResponse:
+      type: object
+      properties:
+        type:
+          type: integer
+        data:
+          type: object
+          properties:
+            content:
+              type: string
+  # securitySchemes:
+  #   token_auth:
+  #     type: apiKey
+  #     in: header
+  #     name: x-tehbot-auth
+  #     x-amazon-apigateway-authorizer:
+  #       type: request
+  #       enableSimpleResponses: true
+  #       authorizerPayloadFormatVersion: "2.0"
+  #       authorizerResultTtlInSeconds: 300
+  #       identitySource: $request.header.x-tehbot-auth
+  #       authorizerUri: "{{lambda_auth_token_validate}}"
+  # x-amazon-api-gateway-integrations:
+  #   auth_token_post:

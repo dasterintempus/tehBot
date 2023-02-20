@@ -69,3 +69,5 @@ Resources:
 Outputs:
   LambdaArn:
     Value: !GetAtt [Lambda, Arn]
+  LambdaName:
+    Value: !Ref Name

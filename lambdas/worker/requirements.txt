@@ -1,1 +1,3 @@
 Pillow
+steam[client]
+beautifulsoup4
