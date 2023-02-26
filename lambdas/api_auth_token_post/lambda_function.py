@@ -13,17 +13,23 @@ import traceback
 
 import logging
 from http.client import HTTPConnection # py3
-HTTPConnection.debuglevel = 1
 
-logging.basicConfig()
-logging.getLogger().setLevel(logging.DEBUG)
-requests_log = logging.getLogger("requests.packages.urllib3")
-requests_log.setLevel(logging.DEBUG)
-requests_log.propagate = True
+import json
+import logging
 
+logging.basicConfig(force=True, format="%(asctime)s %(levelname)s - %(name)s %(pathname)s.%(funcName)s:%(lineno)s %(message)s")
+logger = logging.getLogger(__name__)
 
 def lambda_handler(event, context):
-    print(json.dumps(event))
+    if "dev" in context.function_name.lower():
+        logger.setLevel(logging.DEBUG)
+        HTTPConnection.debuglevel = 1
+        requests_log = logging.getLogger("requests.packages.urllib3")
+        requests_log.setLevel(logging.DEBUG)
+        requests_log.propagate = True
+        print(json.dumps(event))
+    else:
+        logger.setLevel(logging.INFO)
     secrets_arn = os.environ.get("SECRETS_ARN")
     secrets = awsclient("secretsmanager")
     secret_blob = json.loads(secrets.get_secret_value(SecretId=secrets_arn)["SecretString"])

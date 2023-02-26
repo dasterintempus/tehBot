@@ -1,11 +1,10 @@
----
 openapi: 3.0.3
 info:
-  title: "tehbot-{{env_prefix}}Api"
+  title: "tehbotApi"
   description: |-
     TBD
   contact:
-    email: "{{contact_email}}"
+    email: DasterinTempus@outlook.com
   license:
     name: MIT
     url: https://mit-license.org/
@@ -19,7 +18,7 @@ tags:
     description: Webhook receivers for other services
 x-amazon-apigateway-cors:
   allowOrigins:
-    - "{{tehbot_web_url}}"
+    - "https://teh.dasterin.net"
   allowCredentials: true
   exposeHeaders:
     - "x-teh-auth"
@@ -33,8 +32,6 @@ x-amazon-apigateway-cors:
     - PATCH
     - DELETE
   maxAge: 3600
-servers:
-  - url: "{{tehbot_api_url}}"
 paths:
   /discord-interactions:
     post:
@@ -46,16 +43,14 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/DiscordInteractionResponse"
+                $ref: "#/components/schemas/DiscordInteractionresponse"
         '400':
           description: Failed operation
         '401':
           description: Unauthorized operation
       x-amazon-apigateway-integration:
-        uri: "{{lambda_discord_webhook}}"
+        uri: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:tehBot-${EnvPrefix}-discord-webhook/invocations
         httpMethod: "POST"
-        passthroughBehavior: "when_no_templates"
-        payloadFormatVersion: 2.0
         type: "aws_proxy"
   /guilds/{guild_id}/quotes:
     get:
@@ -99,10 +94,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIError"
       x-amazon-apigateway-integration:
-        uri: "{{lambda_quotes_get}}"
+        uri: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:tehBot-${EnvPrefix}-quotes_get/invocations
         httpMethod: "POST"
-        passthroughBehavior: "when_no_templates"
-        payloadFormatVersion: 2.0
         type: "aws_proxy"
       security:
         - token_auth: []
@@ -155,182 +148,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIError"
       x-amazon-apigateway-integration:
-        uri: "{{lambda_quotes_post}}"
+        uri: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:tehBot-${EnvPrefix}-quotes_post/invocations
         httpMethod: "POST"
-        passthroughBehavior: "when_no_templates"
-        payloadFormatVersion: 2.0
-        type: "aws_proxy"
-      security:
-        - token_auth: []
-  /guilds/{guild_id}/quotes/search:
-    post:
-      parameters:
-        - name: guild_id
-          in: path
-          description: Guild ID
-          required: true
-          schema:
-            type: string
-      tags:
-        - quotes
-      summary: Search quotes
-      description: Search quotes for this guild.
-      operationId: searchQuotes
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/QuoteSearchRequest"
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  total_hits:
-                    type: integer
-                  quotes:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Quote"
-        '400':
-          description: Payload Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
-        '401':
-          description: Token Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
-        '403':
-          description: Authentication Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
-      x-amazon-apigateway-integration:
-        uri: "{{lambda_quotes_search_post}}"
-        httpMethod: "POST"
-        passthroughBehavior: "when_no_templates"
-        payloadFormatVersion: 2.0
-        type: "aws_proxy"
-      security:
-        - token_auth: []
-  /guilds/{guild_id}/quotes/{quote_name}:
-    delete:
-      parameters:
-        - name: guild_id
-          in: path
-          description: Guild ID
-          required: true
-          schema:
-            type: string
-        - name: quote_name
-          in: path
-          description: Quote Name
-          required: true
-          schema:
-            type: string
-      tags:
-        - quotes
-      summary: Delete a quote
-      description: Delete a quote for this guild.
-      operationId: deleteQuote
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-        '400':
-          description: Payload Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
-        '401':
-          description: Token Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
-        '403':
-          description: Authentication Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
-      x-amazon-apigateway-integration:
-        uri: "{{lambda_quote_name_delete}}"
-        httpMethod: "POST"
-        passthroughBehavior: "when_no_templates"
-        payloadFormatVersion: 2.0
-        type: "aws_proxy"
-      security:
-        - token_auth: []
-    patch:
-      parameters:
-        - name: guild_id
-          in: path
-          description: Guild ID
-          required: true
-          schema:
-            type: string
-        - name: quote_name
-          in: path
-          description: Quote Name
-          required: true
-          schema:
-            type: string
-      tags:
-        - quotes
-      summary: Update a quote
-      description: Update a quote for this guild.
-      operationId: updateQuote
-      responses:
-        '200':
-          description: Successful operation
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  success:
-                    type: boolean
-                  quote:
-                    $ref: "#/components/schemas/Quote"
-        '400':
-          description: Payload Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
-        '401':
-          description: Token Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
-        '403':
-          description: Authentication Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
-      x-amazon-apigateway-integration:
-        uri: "{{lambda_quote_name_patch}}"
-        httpMethod: "POST"
-        passthroughBehavior: "when_no_templates"
-        payloadFormatVersion: 2.0
         type: "aws_proxy"
       security:
         - token_auth: []
@@ -373,12 +192,12 @@ paths:
               schema:
                 $ref: "#/components/schemas/APIError"
       x-amazon-apigateway-integration:
-        uri: "{{lambda_auth_token_post}}"
+        uri: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:tehBot-${EnvPrefix}-auth_token_post/invocations
         httpMethod: "POST"
         passthroughBehavior: "when_no_templates"
-        payloadFormatVersion: 2.0
+        payloadFormatVersion: 1.0
         type: "aws_proxy"
-
+        
 components:
   schemas:
     AuthTokenRequest:
@@ -417,20 +236,6 @@ components:
         icon:
           type: string
           description: "Discord CDN url for Guilds's icon"
-    QuoteSearchRequest:
-      type: object
-      properties:
-        terms:
-          type: array
-          items:
-            type: string
-          description: "Search terms (quote tags, or partial string matches with quote names)"
-        offset:
-          type: integer
-          description: "Offset (for pagination)"
-        count:
-          type: integer
-          description: "Number of results to return. Max 100."
     Quote:
       type: object
       properties:
@@ -457,7 +262,7 @@ components:
             msg:
               type: string
               description: "A user-friendly error message."
-    DiscordInteractionResponse:
+    DiscordInteractionresponse:
       type: object
       properties:
         type:
@@ -471,11 +276,13 @@ components:
     token_auth:
       type: apiKey
       in: header
-      name: x-teh-auth
+      name: x-tehbot-auth
       x-amazon-apigateway-authorizer:
         type: request
         enableSimpleResponses: true
         authorizerPayloadFormatVersion: "2.0"
-        # authorizerResultTtlInSeconds: 300
-        identitySource: $request.header.x-teh-auth
-        authorizerUri: "{{lambda_token_authorizer}}"
+        authorizerResultTtlInSeconds: 300
+        identitySource: $request.header.x-tehbot-auth
+        authorizerUri: arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:tehBot-${EnvPrefix}-auth_token_validate/invocations
+  # x-amazon-api-gateway-integrations:
+  #   auth_token_post:
