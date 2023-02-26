@@ -20,8 +20,6 @@ Parameters:
   DeleteLambdaArn:
     Type: String
     Default: ""
-  OptionsLambdaArn:
-    Type: String
 
 Conditions:
   HasGet: !Not [ !Equals [ !Ref GetLambdaArn, "" ] ]
@@ -107,16 +105,16 @@ Resources:
           - LambdaArn: !Ref DeleteLambdaArn
 
 
-  OptionsMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref ApiGateway
-      ResourceId: !Ref ApiResource
-      HttpMethod: OPTIONS
-      AuthorizationType: NONE
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub
-          - "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
-          - LambdaArn: !Ref OptionsLambdaArn
+  # OptionsMethod:
+  #   Type: AWS::ApiGateway::Method
+  #   Properties:
+  #     RestApiId: !Ref ApiGateway
+  #     ResourceId: !Ref ApiResource
+  #     HttpMethod: OPTIONS
+  #     AuthorizationType: NONE
+  #     Integration:
+  #       Type: AWS_PROXY
+  #       IntegrationHttpMethod: POST
+  #       Uri: !Sub
+  #         - "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
+  #         - LambdaArn: !Ref OptionsLambdaArn

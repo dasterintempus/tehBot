@@ -16,6 +16,7 @@ import requests
 import io
 import jinja2
 import docker
+import shutil
 
 import adminutils
 
@@ -23,7 +24,8 @@ ALL_STACKS = ["buckets", "cloudfront", "dynamotables", "secrets", "roles", "queu
 
 STACK_HANDLERS = {}
 
-jinja_env = jinja2.Environment(loader=jinja2.FileSystemLoader("../web/"))
+jinja_web_env = jinja2.Environment(loader=jinja2.FileSystemLoader("../web/"))
+jinja_api_env = jinja2.Environment(loader=jinja2.FileSystemLoader("../api/"))
 
 def wait_stack_status(ctx, stackname, okstatus, errstatus):
     cfn = ctx["aws"].client("cloudformation")
@@ -85,11 +87,35 @@ def upsert_stack(ctx, stackname, templatepath, args, **kwargs):
         cfn.describe_stacks(StackName=stackname)
     except botocore.exceptions.ClientError as e:
         if e.response["Error"]["Code"] == "ValidationError":
-            return create_stack(ctx, stackname, templatepath, args, **kwargs)
+            exists = False
         else:
             raise
     else:
+        exists = True
+    if exists is True:
         return update_stack(ctx, stackname, templatepath, args, **kwargs)
+    elif exists is False:
+        return create_stack(ctx, stackname, templatepath, args, **kwargs)
+
+def delete_stack(ctx, stackname):
+    cfn = ctx["aws"].client("cloudformation")
+    try:
+        cfn.describe_stacks(StackName=stackname)
+    except botocore.exceptions.ClientError as e:
+        if e.response["Error"]["Code"] == "ValidationError":
+            exists = False
+        else:
+            raise
+    else:
+        exists = True
+    if exists:
+        print(f"{datetime.datetime.now().isoformat()} - Deleting stack {stackname}")
+        cfn.delete_stack(StackName=stackname)
+        ok, reason = wait_stack_status(ctx, stackname, ("DELETE_COMPLETE",), ("_FAILED", "_ROLLBACK_"))
+        if not ok:
+            raise Exception(f"Stack update failed: {reason}")
+    else:
+        print(f"{datetime.datetime.now().isoformat()} - Told to delete Stack {stackname} but it does not exist")
 
 def stack_handler(name):
     def decorator(func):
@@ -101,7 +127,11 @@ def stack_handler(name):
 @stack_handler("buckets")
 def stack_buckets(ctx):
     stackname = f"tehBot-{ctx['args'].env}Buckets"
-    upsert_stack(ctx, stackname, "../cft/buckets.yml", {})
+    if ctx["args"].action == "upsert":
+        upsert_stack(ctx, stackname, "../cft/buckets.yml", {})
+    elif ctx["args"].action == "delete":
+        delete_stack(ctx, stackname)
+
 
 
 # @stack_handler("waf")
@@ -157,7 +187,7 @@ def push_web_file(ctx, file_name:str, web_bucket:str):
     print(f"{datetime.datetime.now().isoformat()} - Pushing file {file_name} to bucket")
     file_name = os.path.join(*(file_name.split("/")[2:]))
     view = get_web_template_view(ctx)
-    out_body = jinja_env.get_template(file_name).render(**view)
+    out_body = jinja_web_env.get_template(file_name).render(**view)
     bio = io.BytesIO()
     bio.write(out_body.encode("utf-8"))
     bio.seek(0)
@@ -178,13 +208,16 @@ def push_web_file(ctx, file_name:str, web_bucket:str):
 @stack_handler("cloudfront")
 def stack_cloudfront(ctx):
     stackname = f"tehBot-{ctx['args'].env}Cloudfront"
-    params = {}
-    params["UsEastOneCertificateArn"] = ctx["local"]["us-east-1_cert_arn"]
-    params["HostedZoneName"] = ctx["local"]["domain"]
-    # params["WebACLArn"] = adminutils.get_cft_output(ctx["args"].env, "WAF", "WebACLArn", region="us-east-1")
-    upsert_stack(ctx, stackname, "../cft/cloudfront.yml", params)
-    push_web_files(ctx)
-    invalidate_web_file_cache(ctx)
+    if ctx["args"].action == "upsert":
+        params = {}
+        params["UsEastOneCertificateArn"] = ctx["local"]["us-east-1_cert_arn"]
+        params["HostedZoneName"] = ctx["local"]["domain"]
+        # params["WebACLArn"] = adminutils.get_cft_output(ctx["args"].env, "WAF", "WebACLArn", region="us-east-1")
+        upsert_stack(ctx, stackname, "../cft/cloudfront.yml", params)
+        push_web_files(ctx)
+        # invalidate_web_file_cache(ctx)
+    elif ctx["args"].action == "delete":
+        delete_stack(ctx, stackname)
 
 def build_lambdabuilder_docker(ctx):
     if "docker_lambdabuilder_image" not in ctx:
@@ -208,17 +241,28 @@ def build_tehbot_package(ctx):
         
         ctx["tehbot_package_built"] = True
         print(f"{datetime.datetime.now().isoformat()} - Completed building tehbot python package")
+        deps_path = "../lambdas/shared_deps_" + ctx["now"].replace(":","_")
+        if os.path.exists(deps_path):
+            shutil.rmtree(deps_path) #clear the shared deps dir if it already exists.
+        os.mkdir(deps_path) #remake the folder
 
 def package_lambda(ctx, lambda_name, lambda_bucket, lambda_version):
     s3 = ctx["aws"].client("s3")
+
     try:
-        os.remove(f"../lambdas/{lambda_name}_package_{lambda_version}.zip")
+        os.remove(f"../lambdas/{lambda_name}/{lambda_name}_package_{lambda_version}.zip")
     except:
         pass
+
     try:
+        deps_path = "../lambdas/shared_deps_" + ctx["now"].replace(":","_")
         logs = ctx["docker"].containers.run(ctx["docker_lambdabuilder_image"],
             command=[f"{lambda_name}_package_{lambda_version}", "/usr/src/pylib/tehbot/tehbot-0.0.1-py3-none-any.whl"],
-            volumes=[os.path.abspath(f"../lambdas/{lambda_name}")+":/usr/src/app", os.path.abspath("../packages/tehbot/dist")+":/usr/src/pylib/tehbot"],
+            volumes=[
+                os.path.abspath(f"../lambdas/{lambda_name}")+":/usr/src/app",
+                os.path.abspath("../packages/tehbot/dist")+":/usr/src/pylib/tehbot",
+                os.path.abspath(deps_path)+":/usr/src/shared_deps"
+            ],
             remove=True
         )
     except docker.errors.ContainerError:
@@ -233,105 +277,218 @@ def package_lambda(ctx, lambda_name, lambda_bucket, lambda_version):
     #     sys.exit(1)
     with open(f"../lambdas/{lambda_name}/{lambda_name}_package_{lambda_version}.zip", "rb") as f:
         s3.put_object(Bucket=lambda_bucket, Key=f"{lambda_name}_package_{lambda_version}.zip", Body=f)
+    
+    os.remove(f"../lambdas/{lambda_name}/{lambda_name}_package_{lambda_version}.zip")
 
 @stack_handler("lambdas")
 def stack_lambdas(ctx):
-    build_tehbot_package(ctx)
-    build_lambdabuilder_docker(ctx)
-    
-    lambda_bucket = adminutils.get_cft_resource(ctx["args"].env, "Buckets", "LambdaBucket")
-    lambda_version = ctx["now"]
-    for lambda_name in ("worker", "webhook", "cron"):
-        package_lambda(ctx, lambda_name, lambda_bucket, lambda_version)
+    if ctx["args"].action == "upsert":
+        lambda_bucket = adminutils.get_cft_resource(ctx["args"].env, "Buckets", "LambdaBucket")
+        if ctx["args"].lambda_version is None:
+            build_tehbot_package(ctx)
+            build_lambdabuilder_docker(ctx)
+            
+            lambda_version = ctx["now"]
+            for lambda_name in ("worker", "webhook", "cron"):
+                package_lambda(ctx, lambda_name, lambda_bucket, lambda_version)
+            time.sleep(1)
 
-    stackname = f"tehBot-{ctx['args'].env}Lambdas"
-    params = {}
-    params["WebhookVersion"] = lambda_version
-    params["WorkerVersion"] = lambda_version
-    params["CronVersion"] = lambda_version
-    params["RootDiscordUserId"] = ctx["local"]["root_discord_user_id"]
-    upsert_stack(ctx, stackname, "../cft/lambdas.yml", params)
+        else:
+            lambda_version = ctx["args"].lambda_version
+        params = {}
+        params["WebhookVersion"] = lambda_version
+        params["WorkerVersion"] = lambda_version
+        params["CronVersion"] = lambda_version
+        params["RootDiscordUserId"] = ctx["local"]["root_discord_user_id"]
+        stackname = f"tehBot-{ctx['args'].env}Lambdas"
+        upsert_stack(ctx, stackname, "../cft/lambdas.yml", params)
 
-    for guildname in ctx["local"]["guilds"]:
-        guildid = ctx["local"]["guilds"][guildname]
-        stackname = f"tehBot-{ctx['args'].env}LambdaSchedules{guildname}"
-        upsert_stack(ctx, stackname, "../cft/lambda_schedules.yml", {"GuildName": guildname, "GuildId": guildid})
+        for guildname in ctx["local"]["guilds"]:
+            guildid = ctx["local"]["guilds"][guildname]
+            stackname = f"tehBot-{ctx['args'].env}LambdaSchedules{guildname}"
+            upsert_stack(ctx, stackname, "../cft/lambda_schedules.yml", {"GuildName": guildname, "GuildId": guildid})
+        
+    elif ctx["args"].action == "delete":
+        for guildname in ctx["local"]["guilds"]:
+            guildid = ctx["local"]["guilds"][guildname]
+            stackname = f"tehBot-{ctx['args'].env}LambdaSchedules{guildname}"
+            delete_stack(ctx, stackname)
+        stackname = f"tehBot-{ctx['args'].env}Lambdas"
+        delete_stack(ctx, stackname)
 
 
 @stack_handler("dynamotables")
 def stack_dynamotables(ctx):
     stackname = f"tehBot-{ctx['args'].env}DynamoTables"
-    upsert_stack(ctx, stackname, "../cft/dynamotables.yml", {})
+    if ctx["args"].action == "upsert":
+        upsert_stack(ctx, stackname, "../cft/dynamotables.yml", {})
+    elif ctx["args"].action == "delete":
+        delete_stack(ctx, stackname)
 
 
 @stack_handler("secrets")
 def stack_secrets(ctx):
     stackname = f"tehBot-{ctx['args'].env}Secrets"
-    upsert_stack(ctx, stackname, "../cft/secrets.yml", {})
-    ctx["secret_arn"] = adminutils.get_cft_resource(ctx["args"].env, "Secrets", "LambdaSecrets")
-    secretsmanager = ctx["aws"].client("secretsmanager")
-    secretsmanager.put_secret_value(SecretId=ctx["secret_arn"], SecretString=json.dumps(ctx["secrets"]))
+    if ctx["args"].action == "upsert":
+        upsert_stack(ctx, stackname, "../cft/secrets.yml", {})
+        ctx["secret_arn"] = adminutils.get_cft_resource(ctx["args"].env, "Secrets", "LambdaSecrets")
+        secretsmanager = ctx["aws"].client("secretsmanager")
+        secretsmanager.put_secret_value(SecretId=ctx["secret_arn"], SecretString=json.dumps(ctx["secrets"]))
+    elif ctx["args"].action == "delete":
+        delete_stack(ctx, stackname)
 
 
 @stack_handler("roles")
 def stack_roles(ctx):
     stackname = f"tehBot-{ctx['args'].env}Roles"
-    upsert_stack(ctx, stackname, "../cft/roles.yml", {}, Capabilities=["CAPABILITY_IAM"])
+    if ctx["args"].action == "upsert":
+        upsert_stack(ctx, stackname, "../cft/roles.yml", {}, Capabilities=["CAPABILITY_IAM"])
+    elif ctx["args"].action == "delete":
+        delete_stack(ctx, stackname)
 
 
 @stack_handler("queues")
 def stack_queues(ctx):
     stackname = f"tehBot-{ctx['args'].env}Queues"
-    upsert_stack(ctx, stackname, "../cft/queues.yml", {})
-
+    if ctx["args"].action == "upsert":
+        upsert_stack(ctx, stackname, "../cft/queues.yml", {})
+    elif ctx["args"].action == "delete":
+        delete_stack(ctx, stackname)
 
 
 def deploy_api(ctx):
-    gateway_id = adminutils.get_cft_resource(ctx["args"].env, "ApiGateway", "ApiGateway")
-    apigateway = ctx["aws"].client("apigateway")
+    api_id = adminutils.get_cft_resource(ctx["args"].env, "ApiGateway", "ApiGateway")
+    apigateway = ctx["aws"].client("apigatewayv2")
     domain_name = "api." + ctx["local"]["domain"]
     if len(ctx["args"].env) > 0:
         domain_name = ctx["args"].env + "-" + domain_name
     try:
-        apigateway.delete_base_path_mapping(domainName=domain_name, basePath='(none)')
+        mappings = apigateway.get_api_mappings(DomainName=domain_name)["Items"]
+        for mapping in mappings:
+            if mapping["ApiId"] == api_id:
+                apigateway.delete_api_mapping(ApiMappingId=mapping["ApiMappingId"], DomainName=domain_name)
     except:
         pass
-    deployments = apigateway.get_deployments(restApiId=gateway_id)["items"]
-    for deployment in deployments:
-        stages = apigateway.get_stages(restApiId=gateway_id, deploymentId=deployment["id"])["item"]
-        for stage in stages:
-            apigateway.delete_stage(restApiId=gateway_id, stageName=stage["stageName"])
-        apigateway.delete_deployment(restApiId=gateway_id, deploymentId=deployment["id"])
 
-    new_deployment = apigateway.create_deployment(restApiId=gateway_id, stageName="live", stageDescription=datetime.datetime.now().isoformat())
-    apigateway.create_base_path_mapping(domainName=domain_name, restApiId=gateway_id, stage="live")
+    stages = apigateway.get_stages(ApiId=api_id)["Items"]
+    for stage in stages:
+        apigateway.delete_stage(ApiId=api_id, StageName=stage["StageName"])
+    # deployments = apigateway.get_deployments(ApiId=api_id)["Items"]
+    # for deployment in deployments:
+    #     apigateway.delete_deployment(ApiId=api_id, deploymentId=deployment["DeploymentId"])
+
+    new_stage = apigateway.create_stage(ApiId=api_id, StageName="live")
+    apigateway.create_api_mapping(DomainName=domain_name, ApiId=api_id, Stage="live")
+
+def delete_api_deployment(ctx):
+    api_id = adminutils.get_cft_resource(ctx["args"].env, "ApiGateway", "ApiGateway")
+    apigateway = ctx["aws"].client("apigatewayv2")
+    domain_name = "api." + ctx["local"]["domain"]
+    if len(ctx["args"].env) > 0:
+        domain_name = ctx["args"].env + "-" + domain_name
+    apigateway.delete_stage(ApiId=api_id, StageName="live")
+    mappings = apigateway.get_api_mappings(DomainName=domain_name)["Items"]
+    try:
+        for mapping in mappings:
+            if mapping["ApiId"] == api_id:
+                apigateway.delete_api_mapping(ApiMappingId=mapping["ApiMappingId"], DomainName=domain_name)
+    except:
+        pass
 
 @stack_handler("apigateway")
 def stack_apigateway(ctx):
-    build_tehbot_package(ctx)
-    build_lambdabuilder_docker(ctx)
+    gateway_stackname = f"tehBot-{ctx['args'].env}ApiGateway"
+    components_stackname = f"tehBot-{ctx['args'].env}ApiComponents"
+    if ctx["args"].action == "upsert":
+        lambda_bucket = adminutils.get_cft_resource(ctx["args"].env, "Buckets", "LambdaBucket")
+        if ctx["args"].lambda_version is None:
+            build_tehbot_package(ctx)
+            build_lambdabuilder_docker(ctx)
 
-    lambda_bucket = adminutils.get_cft_resource(ctx["args"].env, "Buckets", "LambdaBucket")
-    lambda_version = ctx["now"]
-    for lambda_dir in glob.glob("../lambdas/api_*"):
-        lambda_name = os.path.basename(lambda_dir)
-        package_lambda(ctx, lambda_name, lambda_bucket, lambda_version) 
-    s3 = ctx["aws"].client("s3")
-    with open(f"../cft/apilambda.yml", "rb") as f:
-        s3.put_object(Bucket=lambda_bucket, Key=f"apilambda_cft_{lambda_version}.yml", Body=f)
-    with open(f"../cft/apimethod.yml", "rb") as f:
-        s3.put_object(Bucket=lambda_bucket, Key=f"apimethod_cft_{lambda_version}.yml", Body=f)
+            lambda_version = ctx["now"]
+            for lambda_dir in glob.glob("../lambdas/api_*"):
+                lambda_name = os.path.basename(lambda_dir)
+                package_lambda(ctx, lambda_name, lambda_bucket, lambda_version) 
+        else:
+            lambda_version = ctx["args"].lambda_version
+        
+        
 
+        s3 = ctx["aws"].client("s3")
+        with open(f"../cft/apilambda.yml", "rb") as f:
+            s3.put_object(Bucket=lambda_bucket, Key=f"apilambda_cft_{lambda_version}.yml", Body=f)
+        with open(f"../cft/apimethod.yml", "rb") as f:
+            s3.put_object(Bucket=lambda_bucket, Key=f"apimethod_cft_{lambda_version}.yml", Body=f)
+        time.sleep(1)
 
-    stackname = f"tehBot-{ctx['args'].env}ApiGateway"
-    params = {}
-    params["CertificateArn"] = ctx["local"]["cert_arn"]
-    params["HostedZoneName"] = ctx["local"]["domain"]
-    params["LambdaVersion"] = lambda_version
-    params["RootDiscordUserId"] = ctx["local"]["root_discord_user_id"]
-    upsert_stack(ctx, stackname, "../cft/apigateway.yml", params, Capabilities=["CAPABILITY_IAM"])
-    deploy_api(ctx)
+        components_stackname = f"tehBot-{ctx['args'].env}ApiComponents"
+        params = {}
+        # params["CertificateArn"] = ctx["local"]["cert_arn"]
+        params["HostedZoneName"] = ctx["local"]["domain"]
+        params["LambdaVersion"] = lambda_version
+        params["RootDiscordUserId"] = ctx["local"]["root_discord_user_id"]
+        upsert_stack(ctx, components_stackname, "../cft/apicomponents.yml", params)#, Capabilities=["CAPABILITY_IAM"])
 
+        #Render OpenAPI template
+        template = jinja_api_env.get_template("openapi.yaml")
+        view = {}
+        view.update(ctx["local"])
+        view["env_prefix"] = ctx["args"].env
+        sanitized_view = {}
+        sanitized_view.update(view)
+        cfn = boto3.client("cloudformation")
+        resources = cfn.describe_stack_resources(StackName=components_stackname)["StackResources"]
+        for resource in resources:
+            if resource["ResourceType"] == "AWS::CloudFormation::Stack":
+                nested_stack = cfn.describe_stacks(StackName=resource["PhysicalResourceId"])["Stacks"][0]
+                nested_lambda_name = [out["OutputValue"] for out in nested_stack["Outputs"] if out["OutputKey"] == "LambdaName"][0]
+                nested_lambda_arn = [out["OutputValue"] for out in nested_stack["Outputs"] if out["OutputKey"] == "LambdaArn"][0]
+                view[f"lambda_{nested_lambda_name}"] = f"arn:aws:apigateway:us-east-2:lambda:path/2015-03-31/functions/{nested_lambda_arn}/invocations"
+                sanitized_view[f"lambda_{nested_lambda_name}"] = "REDACTED"
+        lambda_stackname = f"tehBot-{ctx['args'].env}Lambdas"
+        stack = cfn.describe_stacks(StackName=lambda_stackname)["Stacks"][0]
+        webhook_lambda_arn = [out["OutputValue"] for out in stack["Outputs"] if out["OutputKey"] == "WebhookLambdaArn"][0]
+        view["lambda_discord_webhook"] = f"arn:aws:apigateway:us-east-2:lambda:path/2015-03-31/functions/{webhook_lambda_arn}/invocations"
+        sanitized_view["lambda_discord_webhook"] = "REDACTED"
+
+        openapi_bodystr = template.render(**view)
+        openapi_body = io.BytesIO()
+        openapi_body.write(openapi_bodystr.encode())
+        openapi_body.seek(0)
+        s3.put_object(Bucket=lambda_bucket, Key=f"openapi_{lambda_version}.yml", Body=openapi_body)
+        # openapi_body.seek(0)
+        # time.sleep(0.1)
+        # s3.put_object_acl(Bucket=lambda_bucket, Key=f"openapi_{lambda_version}.yml", ACL="public-read")
+
+        #push docs!
+        web_bucket = adminutils.get_cft_resource(ctx["args"].env, "Buckets", "WebBucket")
+        openapi_sanitized_bodystr = template.render(**sanitized_view)
+        openapi_sanitized_body = io.BytesIO()
+        openapi_sanitized_body.write(openapi_sanitized_bodystr.encode())
+        openapi_sanitized_body.seek(0)
+        # s3.put_object(Bucket=lambda_bucket, Key=f"openapi_{lambda_version}.yml", Body=openapi_sanitized_body)
+        s3.put_object(Bucket=web_bucket, Key=f"docs/openapi_{lambda_version}.yml", ContentType="text/plain", Body=openapi_sanitized_body)
+        view["openapi_url"] = f"{ctx['local']['tehbot_web_url']}/docs/openapi_{lambda_version}.yml"
+        docstemplate = jinja_api_env.get_template("docs.html")
+        apidocs_bodystr = docstemplate.render(**view)
+        apidocs_body = io.BytesIO()
+        apidocs_body.write(apidocs_bodystr.encode())
+        apidocs_body.seek(0)
+        s3.put_object(Bucket=web_bucket, Key=f"docs/redoc.html", ContentType="text/html", Body=apidocs_body)
+        
+        params = {}
+        params["CertificateArn"] = ctx["local"]["cert_arn"]
+        params["HostedZoneName"] = ctx["local"]["domain"]
+        params["OpenApiFileKey"] = f"openapi_{lambda_version}.yml"
+        # params["LambdaVersion"] = lambda_version
+        # params["RootDiscordUserId"] = ctx["local"]["root_discord_user_id"]
+        upsert_stack(ctx, gateway_stackname, "../cft/apigateway.yml", params, Capabilities=["CAPABILITY_IAM"])
+        # deploy_api(ctx)
+
+    elif ctx["args"].action == "delete":
+        # delete_api_deployment(ctx)
+        delete_stack(ctx, gateway_stackname)
+        delete_stack(ctx, components_stackname)
 
 
 @stack_handler("backups")
@@ -340,9 +497,16 @@ def stack_backups(ctx):
     #west trickery
     old_aws = ctx["aws"]
     ctx["aws"] = boto3.Session(region_name="us-west-1")
-    upsert_stack(ctx, stackname, "../cft/backups.yml", {})
+    if ctx["args"].action == "upsert":
+        upsert_stack(ctx, stackname, "../cft/backups.yml", {})
+    elif ctx["args"].action == "delete":
+        upsert_stack(ctx, stackname)
     ctx["aws"] = old_aws
-    upsert_stack(ctx, stackname, "../cft/backups.yml", {})
+    if ctx["args"].action == "upsert":
+        upsert_stack(ctx, stackname, "../cft/backups.yml", {})
+    elif ctx["args"].action == "delete":
+        upsert_stack(ctx, stackname)
+    
 
 
 if __name__ == "__main__":
@@ -350,9 +514,10 @@ if __name__ == "__main__":
     parser.add_argument("env")
     parser.add_argument("action")
     parser.add_argument("--stack", dest="stacks", action="append", default=[])
+    parser.add_argument("--lambda-version", dest="lambda_version", action="store", default=None)
     args = parser.parse_args()
 
-    if args.action != "upsert":
+    if args.action not in ("upsert", "delete"):
         print("Invalid action.")
         sys.exit(2)
 
@@ -364,12 +529,15 @@ if __name__ == "__main__":
     else:
         stacks = [stack for stack in ALL_STACKS if stack in args.stacks] #stay in correct order, NOT arg order!
 
+    if args.action == "delete":
+        stacks.reverse()
+
     ctx = {}
     ctx["now"] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     ctx["local"] = local
     ctx["secrets"] = secrets
     ctx["args"] = args
-    ctx["aws"] = boto3.Session()
+    ctx["aws"] = boto3.Session(region_name="us-east-2")
     ctx["docker"] = docker.from_env()
 
     for stack in stacks:
@@ -380,3 +548,9 @@ if __name__ == "__main__":
             print(f"Error in stack: {stack}")
             traceback.print_exc()
             sys.exit(1)
+
+    deps_path = "../lambdas/shared_deps_" + ctx["now"].replace(":","_")
+    if os.path.exists(deps_path):
+        shutil.rmtree(deps_path) #clear the shared deps dir when done.
+    if "apigateway" in stacks or "cloudfront" in stacks:
+        invalidate_web_file_cache(ctx)

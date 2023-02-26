@@ -76,7 +76,7 @@ def interact(event, context):
         body = json.loads(event["body"])
         print(event["body"])
     except:
-        pprint.pprint(event)
+        print(json.dumps(event))
         return {
             "statusCode": 400,
             "body": ""
@@ -91,27 +91,31 @@ def interact(event, context):
             "content": "This command has been removed :( Please use '!botsing' instead."
         }})
     else:
-        pprint.pprint(event)
+        print(json.dumps(event))
         return json_response({"type": 4, "data": {
             "content": "Unrecognized webhook!"
         }})
 
 def lambda_handler(event, context):
-    headers = event.get("headers")
-    if headers is None:
-        headers = {}
-    if "x-forwarded-proto" in headers and headers["x-forwarded-proto"] == "http":
-        return {
-            "statusCode": 301,
-            "headers": {
-                "Location": f"https://{headers['host']}"
+    try:
+        headers = event.get("headers")
+        if headers is None:
+            headers = {}
+        if "x-forwarded-proto" in headers and headers["x-forwarded-proto"] == "http":
+            return {
+                "statusCode": 301,
+                "headers": {
+                    "Location": f"https://{headers['host']}"
+                }
             }
-        }
-    elif event["path"] in ("/", "/discord-interactions") and event["httpMethod"] == "POST":
-        return interact(event, context)
-    else:
-        pprint.pprint(event)
-        return {
-            "statusCode": 400,
-            "body": ""
-        }
+        elif event["requestContext"]["http"]["path"] in ("/", "/discord-interactions") and event["requestContext"]["http"]["method"] == "POST":
+            return interact(event, context)
+        else:
+            print(json.dumps(event))
+            return {
+                "statusCode": 400,
+                "body": ""
+            }
+    except:
+        print(json.dumps(event))
+        raise

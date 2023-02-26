@@ -1,0 +1,482 @@
+---
+openapi: 3.0.3
+info:
+  title: "tehbot-{{env_prefix}}Api"
+  description: |-
+    TBD
+  contact:
+    email: "{{contact_email}}"
+  license:
+    name: MIT
+    url: https://mit-license.org/
+  version: 0.1.0
+tags:
+  - name: quotes
+    description: Management and searching of Quotes
+  - name: auth
+    description: Auth token operations
+  - name: webhook
+    description: Webhook receivers for other services
+x-amazon-apigateway-cors:
+  allowOrigins:
+    - "{{tehbot_web_url}}"
+  allowCredentials: true
+  exposeHeaders:
+    - "x-teh-auth"
+    - "content-type"
+  allowHeaders:
+    - "x-teh-auth"
+    - "content-type"
+  allowMethods:
+    - GET
+    - POST
+    - PATCH
+    - DELETE
+  maxAge: 3600
+servers:
+  - url: "{{tehbot_api_url}}"
+paths:
+  /discord-interactions:
+    post:
+      tags:
+        - webhook
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DiscordInteractionResponse"
+        '400':
+          description: Failed operation
+        '401':
+          description: Unauthorized operation
+      x-amazon-apigateway-integration:
+        uri: "{{lambda_discord_webhook}}"
+        httpMethod: "POST"
+        passthroughBehavior: "when_no_templates"
+        payloadFormatVersion: 2.0
+        type: "aws_proxy"
+  /guilds/{guild_id}/quotes:
+    get:
+      parameters:
+        - name: guild_id
+          in: path
+          description: Guild ID
+          required: true
+          schema:
+            type: string
+      tags:
+        - quotes
+      summary: List all quotes
+      description: Get all quotes for this guild. See /guilds/{guild_id}/quotes/search for searching.
+      operationId: listQuotes
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Quote"
+        '400':
+          description: Payload Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+      x-amazon-apigateway-integration:
+        uri: "{{lambda_quotes_get}}"
+        httpMethod: "POST"
+        passthroughBehavior: "when_no_templates"
+        payloadFormatVersion: 2.0
+        type: "aws_proxy"
+      security:
+        - token_auth: []
+    post:
+      parameters:
+        - name: guild_id
+          in: path
+          description: Guild ID
+          required: true
+          schema:
+            type: string
+      tags:
+        - quotes
+      summary: Add a new quote.
+      description: Create a new quote for this guild.
+      operationId: postQuote
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Quote"
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  quote:
+                    $ref: "#/components/schemas/Quote"
+        '400':
+          description: Payload Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteCreateError"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+      x-amazon-apigateway-integration:
+        uri: "{{lambda_quotes_post}}"
+        httpMethod: "POST"
+        passthroughBehavior: "when_no_templates"
+        payloadFormatVersion: 2.0
+        type: "aws_proxy"
+      security:
+        - token_auth: []
+  /guilds/{guild_id}/quotes/search:
+    post:
+      parameters:
+        - name: guild_id
+          in: path
+          description: Guild ID
+          required: true
+          schema:
+            type: string
+      tags:
+        - quotes
+      summary: Search quotes
+      description: Search quotes for this guild.
+      operationId: searchQuotes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QuoteSearchRequest"
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  total_hits:
+                    type: integer
+                  quotes:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Quote"
+        '400':
+          description: Payload Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+      x-amazon-apigateway-integration:
+        uri: "{{lambda_quotes_search_post}}"
+        httpMethod: "POST"
+        passthroughBehavior: "when_no_templates"
+        payloadFormatVersion: 2.0
+        type: "aws_proxy"
+      security:
+        - token_auth: []
+  /guilds/{guild_id}/quotes/{quote_name}:
+    delete:
+      parameters:
+        - name: guild_id
+          in: path
+          description: Guild ID
+          required: true
+          schema:
+            type: string
+        - name: quote_name
+          in: path
+          description: Quote Name
+          required: true
+          schema:
+            type: string
+      tags:
+        - quotes
+      summary: Delete a quote
+      description: Delete a quote for this guild.
+      operationId: deleteQuote
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+        '400':
+          description: Payload Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteDeleteError"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        '404':
+          description: Quote Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteDeleteError"
+      x-amazon-apigateway-integration:
+        uri: "{{lambda_quote_name_delete}}"
+        httpMethod: "POST"
+        passthroughBehavior: "when_no_templates"
+        payloadFormatVersion: 2.0
+        type: "aws_proxy"
+      security:
+        - token_auth: []
+    patch:
+      parameters:
+        - name: guild_id
+          in: path
+          description: Guild ID
+          required: true
+          schema:
+            type: string
+        - name: quote_name
+          in: path
+          description: Quote Name
+          required: true
+          schema:
+            type: string
+      tags:
+        - quotes
+      summary: Update a quote
+      description: Update a quote for this guild.
+      operationId: updateQuote
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  quote:
+                    $ref: "#/components/schemas/Quote"
+        '400':
+          description: Payload Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteUpdateError"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+        '404':
+          description: Quote Not Found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QuoteUpdateError"
+      x-amazon-apigateway-integration:
+        uri: "{{lambda_quote_name_patch}}"
+        httpMethod: "POST"
+        passthroughBehavior: "when_no_templates"
+        payloadFormatVersion: 2.0
+        type: "aws_proxy"
+      security:
+        - token_auth: []
+  /auth/token:
+    post:
+      tags:
+        - auth
+      summary: Request an auth token
+      description: Request a tehBot auth token via Discord OAuth callback
+      operationId: authToken
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthTokenRequest"
+        required: true
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthTokenResponse"
+        '400':
+          description: Payload Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+      x-amazon-apigateway-integration:
+        uri: "{{lambda_auth_token_post}}"
+        httpMethod: "POST"
+        passthroughBehavior: "when_no_templates"
+        payloadFormatVersion: 2.0
+        type: "aws_proxy"
+
+components:
+  responses:
+    Forbidden:
+      description: Authentication Error
+      application/json:
+        content:
+          type: object
+          properties:
+            message:
+              type: string
+              enum:
+                - "Forbidden"
+  schemas:
+    AuthTokenRequest:
+      type: object
+      properties:
+        code:
+          type: string
+      example:
+        code: "discord_oauth_callback_value"
+    AuthTokenResponse:
+      type: object
+      properties:
+        token:
+          type: string
+          description: "The tehBoth auth token."
+        user_display_name:
+          type: string
+          description: "Discord display name for this User."
+        user_avatar:
+          type: string
+          description: "Discord CDN url for User's avatar."
+        guilds:
+          type: array
+          description: "An array of Guilds that this User is authenticated for."
+          items:
+            $ref: '#/components/schemas/Guild'
+    Guild:
+      type: object
+      properties:
+        id:
+          type: string
+          description: "The Discord API identifier for the Guild"
+        name:
+          type: string
+          description: "The name of the Guild"
+        icon:
+          type: string
+          description: "Discord CDN url for Guilds's icon"
+    QuoteSearchRequest:
+      type: object
+      properties:
+        terms:
+          type: array
+          items:
+            type: string
+          description: "Search terms (quote tags, or partial string matches with quote names)"
+        offset:
+          type: integer
+          description: "Offset (for pagination)"
+        count:
+          type: integer
+          description: "Number of results to return. Max 100."
+    Quote:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "The name of the quote"
+        tags:
+          type: array
+          items:
+            type: string
+          description: "A list of tags"
+        url:
+          type: string
+          description: "URL of the quote image"
+    APIError:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+              description: "An error code string."
+            msg:
+              type: string
+              description: "A user-friendly error message."
+    QuoteUpdateError:
+      allOf:
+        - $ref: '#/components/schemas/APIError'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  enum:
+                    - NotFound
+                    - InvalidJson
+                    - QuoteAlreadyExists
+                    - NoTags
+    QuoteDeleteError:
+      allOf:
+        - $ref: '#/components/schemas/APIError'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  enum:
+                    - NotFound
+    QuoteCreateError:
+      allOf:
+        - $ref: '#/components/schemas/APIError'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  enum:
+                    - InvalidJson
+                    - InvalidRequestParameter
+                    - UnreachableUrl
+                    - QuoteAlreadyExists
+                    - NoTags
+    DiscordInteractionResponse:
+      type: object
+      properties:
+        type:
+          type: integer
+        data:
+          type: object
+          properties:
+            content:
+              type: string
+  securitySchemes:
+    token_auth:
+      type: apiKey
+      in: header
+      name: x-teh-auth
+      x-amazon-apigateway-authorizer:
+        type: request
+        enableSimpleResponses: true
+        authorizerPayloadFormatVersion: "2.0"
+        # authorizerResultTtlInSeconds: 300
+        identitySource: $request.header.x-teh-auth
+        authorizerUri: "{{lambda_token_authorizer}}"

@@ -21,6 +21,7 @@ Resources:
   Lambda:
     Type: AWS::Lambda::Function
     Properties:
+      FunctionName: !Sub "tehBot-${EnvPrefix}-${Name}"
       Code:
         S3Bucket: !ImportValue
           'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
@@ -68,3 +69,5 @@ Resources:
 Outputs:
   LambdaArn:
     Value: !GetAtt [Lambda, Arn]
+  LambdaName:
+    Value: !Ref Name

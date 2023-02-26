@@ -10,6 +10,8 @@
             "name": "id"
         },
         "discord_oauth_url": "",
-        "tehbot_api_url": ""
+        "tehbot_api_url": "",
+        "tehbot_web_url": "",
+        "contact_email": ""
     }
 }

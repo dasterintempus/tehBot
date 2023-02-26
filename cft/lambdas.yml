@@ -18,6 +18,7 @@ Resources:
   WebhookLambda:
     Type: AWS::Lambda::Function
     Properties:
+      FunctionName: !Sub "tehBot-${EnvPrefix}-discord-webhook"
       Code:
         S3Bucket: !ImportValue
           'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"

@@ -6,13 +6,23 @@ from tehbot.aws import client as awsclient
 from tehbot.settings import get_settings
 from tehbot.discord import build_oauth_client, api as discordapi
 from tehbot.util import CONTEXT
-from tehbot.api import make_response, check_token_validity
+from tehbot.api import make_response, get_json_body
 from tehbot.api.token import Token
 from tehbot.quotes import Quote
 import pprint
 
+import json
+import logging
+
+logging.basicConfig(force=True, format="%(asctime)s %(levelname)s - %(name)s %(pathname)s.%(funcName)s:%(lineno)s %(message)s")
+logger = logging.getLogger(__name__)
+
 def lambda_handler(event, context):
-    print(json.dumps(event))
+    if "dev" in context.function_name.lower():
+        logger.setLevel(logging.DEBUG)
+        print(json.dumps(event))
+    else:
+        logger.setLevel(logging.INFO)
     secrets_arn = os.environ.get("SECRETS_ARN")
     secrets = awsclient("secretsmanager")
     secret_blob = json.loads(secrets.get_secret_value(SecretId=secrets_arn)["SecretString"])
@@ -21,15 +31,13 @@ def lambda_handler(event, context):
 
     guild_id = event["pathParameters"]["guild_id"]
     
-    ok, response_body = check_token_validity(event, guild_id)
-    if not ok:
-        return response_body
+    # ok, response_body = check_token_validity(event, guild_id)
+    # if not ok:
+    #     return response_body
 
-    body_str = event.get("body")
-    if body_str is None:
-        body_str = "{}"
+    
     try:
-        request_body = json.loads(body_str)
+        request_body = get_json_body(event)
     except:
         return make_response(400, {"error": {"code": "InvalidJson", "msg": "Request body was not valid JSON."}})
     terms = request_body.get("terms", [])

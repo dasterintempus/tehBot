@@ -8,9 +8,7 @@ Parameters:
     Type: String
   HostedZoneName:
     Type: String
-  LambdaVersion:
-    Type: String
-  RootDiscordUserId:
+  OpenApiFileKey:
     Type: String
 
 Conditions:
@@ -19,24 +17,53 @@ Conditions:
 
 Resources:
   ApiGateway:
-    Type: AWS::ApiGateway::RestApi
+    Type: AWS::ApiGatewayV2::Api
     Properties:
-      Name: !Sub "tehbot-${EnvPrefix}ApiGateway"
-      EndpointConfiguration:
-        Types:
-          - REGIONAL
+      BodyS3Location:
+        Bucket: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
+        Key: !Ref OpenApiFileKey
+
+  ApiStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      StageName: $default
+      ApiId: !Ref ApiGateway
+      AutoDeploy: true
 
   ApiDomainName:
-    Type: AWS::ApiGateway::DomainName
+    Type: AWS::ApiGatewayV2::DomainName
     Properties:
       DomainName: !If
         - Nonprod
         - !Sub "${EnvPrefix}-api.${HostedZoneName}"
         - !Sub api.${HostedZoneName}
-      RegionalCertificateArn: !Ref CertificateArn
-      EndpointConfiguration:
-        Types:
-          - REGIONAL
+      DomainNameConfigurations:
+        - EndpointType: Regional
+          CertificateArn: !Ref CertificateArn
+          CertificateName: apiCert
+
+  ApiMapping:
+    Type: AWS::ApiGatewayV2::ApiMapping
+    Properties:
+      DomainName: !If
+        - Nonprod
+        - !Sub "${EnvPrefix}-api.${HostedZoneName}"
+        - !Sub api.${HostedZoneName}
+      ApiId: !Ref ApiGateway
+      Stage: !Ref ApiStage
+
+  # ApiDomainName:
+  #   Type: AWS::ApiGateway::DomainName
+  #   Properties:
+  #     DomainName: !If
+  #       - Nonprod
+  #       - !Sub "${EnvPrefix}-api.${HostedZoneName}"
+  #       - !Sub api.${HostedZoneName}
+  #     RegionalCertificateArn: !Ref CertificateArn
+  #     EndpointConfiguration:
+  #       Types:
+  #         - REGIONAL
   
   ApiR53Entry:
     Type: AWS::Route53::RecordSet
@@ -50,348 +77,8 @@ Resources:
       AliasTarget:
         DNSName: !GetAtt ApiDomainName.RegionalDomainName
         HostedZoneId: !GetAtt ApiDomainName.RegionalHostedZoneId
-
-  # ApiDeployment:
-  #   Type: AWS::ApiGateway::Deployment
-  #   Properties:
-  #     RestApiId: !Ref ApiGateway
-  #     StageName: live
-  #   DependsOn: DiscordInteractionsMethod
-
-  # ApiBaseNameMapping:
-  #   Type: AWS::ApiGateway::BasePathMapping
-  #   Properties:
-  #     BasePath: "tehbot"
-  #     DomainName: !Ref ApiDomainName
-  #     RestApiId: !Ref ApiGateway
-  #     Stage: live
-  #   DependsOn:
-  #     - ApiDeployment
-  #     - ApiR53Entry
-
-  CronLambdaTokenCleanupSchedule:
-    Type: AWS::Events::Rule
-    Properties:
-      Description: !Sub "ScheduleRule for token_cleanup (${EnvPrefix})"
-      ScheduleExpression: "rate(1 hour)"
-      State: "ENABLED"
-      Targets: 
-        - Arn: !ImportValue
-            'Fn::Sub': "tehBot-${EnvPrefix}CronLambdaArn"
-          Id: "token_cleanup"
-          Input: |
-            {
-              "op": "token_cleanup"
-            }
-  CronLambdaPerms:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !ImportValue
-        'Fn::Sub': "tehBot-${EnvPrefix}CronLambdaArn"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: !GetAtt CronLambdaTokenCleanupSchedule.Arn
-
-  
-  SharedOptionsLambdaStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub
-        - "https://s3.amazonaws.com/${LambdaBucket}/apilambda_cft_${LambdaVersion}.yml"
-        - LambdaBucket: !ImportValue
-            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
-          LambdaVersion: !Ref LambdaVersion
-      Parameters:
-        EnvPrefix: !Ref EnvPrefix
-        Version: !Ref LambdaVersion
-        Name: shared_options
-        RootDiscordUserId: !Ref RootDiscordUserId
-        HostedZoneName: !Ref HostedZoneName
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-
-  AuthTokenPostLambdaStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub
-        - "https://s3.amazonaws.com/${LambdaBucket}/apilambda_cft_${LambdaVersion}.yml"
-        - LambdaBucket: !ImportValue
-            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
-          LambdaVersion: !Ref LambdaVersion
-      Parameters:
-        EnvPrefix: !Ref EnvPrefix
-        Version: !Ref LambdaVersion
-        Name: auth_token_post
-        RootDiscordUserId: !Ref RootDiscordUserId
-        HostedZoneName: !Ref HostedZoneName
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-
-
-  
-  QuotesGetLambdaStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub
-        - "https://s3.amazonaws.com/${LambdaBucket}/apilambda_cft_${LambdaVersion}.yml"
-        - LambdaBucket: !ImportValue
-            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
-          LambdaVersion: !Ref LambdaVersion
-      Parameters:
-        EnvPrefix: !Ref EnvPrefix
-        Version: !Ref LambdaVersion
-        Name: quotes_get
-        RootDiscordUserId: !Ref RootDiscordUserId
-        HostedZoneName: !Ref HostedZoneName
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-  
-  QuotesPostLambdaStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub
-        - "https://s3.amazonaws.com/${LambdaBucket}/apilambda_cft_${LambdaVersion}.yml"
-        - LambdaBucket: !ImportValue
-            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
-          LambdaVersion: !Ref LambdaVersion
-      Parameters:
-        EnvPrefix: !Ref EnvPrefix
-        Version: !Ref LambdaVersion
-        Name: quotes_post
-        RootDiscordUserId: !Ref RootDiscordUserId
-        HostedZoneName: !Ref HostedZoneName
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-
-  QuotesSearchPostLambdaStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub
-        - "https://s3.amazonaws.com/${LambdaBucket}/apilambda_cft_${LambdaVersion}.yml"
-        - LambdaBucket: !ImportValue
-            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
-          LambdaVersion: !Ref LambdaVersion
-      Parameters:
-        EnvPrefix: !Ref EnvPrefix
-        Version: !Ref LambdaVersion
-        Name: quotes_search_post
-        RootDiscordUserId: !Ref RootDiscordUserId
-        HostedZoneName: !Ref HostedZoneName
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-
-
-  QuoteNamePatchLambdaStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub
-        - "https://s3.amazonaws.com/${LambdaBucket}/apilambda_cft_${LambdaVersion}.yml"
-        - LambdaBucket: !ImportValue
-            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
-          LambdaVersion: !Ref LambdaVersion
-      Parameters:
-        EnvPrefix: !Ref EnvPrefix
-        Version: !Ref LambdaVersion
-        Name: quote_name_patch
-        RootDiscordUserId: !Ref RootDiscordUserId
-        HostedZoneName: !Ref HostedZoneName
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-
-
-  QuoteNameDeleteLambdaStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub
-        - "https://s3.amazonaws.com/${LambdaBucket}/apilambda_cft_${LambdaVersion}.yml"
-        - LambdaBucket: !ImportValue
-            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
-          LambdaVersion: !Ref LambdaVersion
-      Parameters:
-        EnvPrefix: !Ref EnvPrefix
-        Version: !Ref LambdaVersion
-        Name: quote_name_delete
-        RootDiscordUserId: !Ref RootDiscordUserId
-        HostedZoneName: !Ref HostedZoneName
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
   
 
-
-  AuthResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGateway
-      ParentId: !GetAtt 
-        - ApiGateway
-        - RootResourceId
-      PathPart: auth
-  
-  AuthTokenResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGateway
-      ParentId: !Ref AuthResource
-      PathPart: token
-  
-  AuthTokenMethods:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub
-        - "https://s3.amazonaws.com/${LambdaBucket}/apimethod_cft_${LambdaVersion}.yml"
-        - LambdaBucket: !ImportValue
-            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
-          LambdaVersion: !Ref LambdaVersion
-      Parameters:
-        ApiGateway: !Ref ApiGateway
-        ApiResource: !Ref AuthTokenResource
-        PostLambdaArn: !GetAtt AuthTokenPostLambdaStack.Outputs.LambdaArn
-        OptionsLambdaArn: !GetAtt SharedOptionsLambdaStack.Outputs.LambdaArn
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-
-  GuildsResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGateway
-      ParentId: !GetAtt 
-        - ApiGateway
-        - RootResourceId
-      PathPart: guilds
-
-  GuildsGuildIdResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGateway
-      ParentId: !Ref GuildsResource
-      PathPart: "{guild_id}"
-
-  GuildsGuildIdQuotesResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGateway
-      ParentId: !Ref GuildsGuildIdResource
-      PathPart: quotes
-
-  GuildsGuildIdQuotesMethods:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub
-        - "https://s3.amazonaws.com/${LambdaBucket}/apimethod_cft_${LambdaVersion}.yml"
-        - LambdaBucket: !ImportValue
-            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
-          LambdaVersion: !Ref LambdaVersion
-      Parameters:
-        ApiGateway: !Ref ApiGateway
-        ApiResource: !Ref GuildsGuildIdQuotesResource
-        GetLambdaArn: !GetAtt QuotesGetLambdaStack.Outputs.LambdaArn
-        PostLambdaArn: !GetAtt QuotesPostLambdaStack.Outputs.LambdaArn
-        OptionsLambdaArn: !GetAtt SharedOptionsLambdaStack.Outputs.LambdaArn
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-
-  GuildsGuildIdQuotesSearchResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGateway
-      ParentId: !Ref GuildsGuildIdQuotesResource
-      PathPart: "search"
-  
-  GuildsGuildIdQuotesSearchMethods:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub
-        - "https://s3.amazonaws.com/${LambdaBucket}/apimethod_cft_${LambdaVersion}.yml"
-        - LambdaBucket: !ImportValue
-            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
-          LambdaVersion: !Ref LambdaVersion
-      Parameters:
-        ApiGateway: !Ref ApiGateway
-        ApiResource: !Ref GuildsGuildIdQuotesSearchResource
-        PostLambdaArn: !GetAtt QuotesSearchPostLambdaStack.Outputs.LambdaArn
-        OptionsLambdaArn: !GetAtt SharedOptionsLambdaStack.Outputs.LambdaArn
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-
-
-  GuildsGuildIdQuotesQuoteNameResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGateway
-      ParentId: !Ref GuildsGuildIdQuotesResource
-      PathPart: "{quote_name}"
-
-  GuildsGuildIdQuotesQuoteNameMethods:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub
-        - "https://s3.amazonaws.com/${LambdaBucket}/apimethod_cft_${LambdaVersion}.yml"
-        - LambdaBucket: !ImportValue
-            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
-          LambdaVersion: !Ref LambdaVersion
-      Parameters:
-        ApiGateway: !Ref ApiGateway
-        ApiResource: !Ref GuildsGuildIdQuotesQuoteNameResource
-        DeleteLambdaArn: !GetAtt QuoteNameDeleteLambdaStack.Outputs.LambdaArn
-        PatchLambdaArn: !GetAtt QuoteNamePatchLambdaStack.Outputs.LambdaArn
-        OptionsLambdaArn: !GetAtt SharedOptionsLambdaStack.Outputs.LambdaArn
-    UpdateReplacePolicy: Delete
-    DeletionPolicy: Delete
-
-  # AuthTokenPostMethod:
-  #   Type: AWS::ApiGateway::Method
-  #   Properties:
-  #     RestApiId: !Ref ApiGateway
-  #     ResourceId: !Ref AuthTokenResource
-  #     HttpMethod: POST
-  #     AuthorizationType: NONE
-  #     Integration:
-  #       Type: AWS_PROXY
-  #       IntegrationHttpMethod: POST
-  #       Uri: !Sub
-  #         - "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
-  #         - LambdaArn: !GetAtt AuthTokenPostLambdaStack.Outputs.LambdaArn
-  
-  # AuthTokenOptionsMethod:
-  #   Type: AWS::ApiGateway::Method
-  #   Properties:
-  #     RestApiId: !Ref ApiGateway
-  #     ResourceId: !Ref AuthTokenResource
-  #     HttpMethod: OPTIONS
-  #     AuthorizationType: NONE
-  #     Integration:
-  #       Type: AWS_PROXY
-  #       IntegrationHttpMethod: POST
-  #       Uri: !Sub
-  #         - "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
-  #         - LambdaArn: !GetAtt SharedOptionsLambdaStack.Outputs.LambdaArn
-
-
-  DiscordInteractionsResource:
-    Type: AWS::ApiGateway::Resource
-    Properties:
-      RestApiId: !Ref ApiGateway
-      ParentId: !GetAtt 
-        - ApiGateway
-        - RootResourceId
-      PathPart: discord-interactions
-  
-  DiscordInteractionsMethod:
-    Type: AWS::ApiGateway::Method
-    Properties:
-      RestApiId: !Ref ApiGateway
-      ResourceId: !Ref DiscordInteractionsResource
-      HttpMethod: POST
-      AuthorizationType: NONE
-      Integration:
-        Type: AWS_PROXY
-        IntegrationHttpMethod: POST
-        Uri: !Sub
-          - "arn:${AWS::Partition}:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${LambdaArn}/invocations"
-          - LambdaArn: !ImportValue
-              'Fn::Sub': "tehBot-${EnvPrefix}WebhookLambdaArn"
-    DependsOn: DiscordInteractionsLambdaPermission
-  
   DiscordInteractionsLambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -399,6 +86,7 @@ Resources:
       FunctionName: !ImportValue
           'Fn::Sub': "tehBot-${EnvPrefix}WebhookLambdaArn"
       Principal: apigateway.amazonaws.com
+
 
   ApiGatewayLoggingRole:
     Condition: Prod

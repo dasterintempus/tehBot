@@ -8,22 +8,28 @@ from tehbot.discord import build_oauth_client, api as discordapi
 from tehbot.util import CONTEXT
 from tehbot.api import make_response
 from tehbot.api.token import Token
-import pprint
+import base64
 import traceback
 
 import logging
 from http.client import HTTPConnection # py3
-HTTPConnection.debuglevel = 1
 
-logging.basicConfig()
-logging.getLogger().setLevel(logging.DEBUG)
-requests_log = logging.getLogger("requests.packages.urllib3")
-requests_log.setLevel(logging.DEBUG)
-requests_log.propagate = True
+import json
+import logging
 
+logging.basicConfig(force=True, format="%(asctime)s %(levelname)s - %(name)s %(pathname)s.%(funcName)s:%(lineno)s %(message)s")
+logger = logging.getLogger(__name__)
 
 def lambda_handler(event, context):
-    print(json.dumps(event))
+    if "dev" in context.function_name.lower():
+        logger.setLevel(logging.DEBUG)
+        HTTPConnection.debuglevel = 1
+        requests_log = logging.getLogger("requests.packages.urllib3")
+        requests_log.setLevel(logging.DEBUG)
+        requests_log.propagate = True
+        print(json.dumps(event))
+    else:
+        logger.setLevel(logging.INFO)
     secrets_arn = os.environ.get("SECRETS_ARN")
     secrets = awsclient("secretsmanager")
     secret_blob = json.loads(secrets.get_secret_value(SecretId=secrets_arn)["SecretString"])
@@ -31,7 +37,13 @@ def lambda_handler(event, context):
     CONTEXT["cache"] = {}
 
     try:
-        request_body = json.loads(event["body"])
+        event_body = event["body"]
+        if event["isBase64Encoded"]:
+            event_body = base64.b64decode(event_body)
+    except:
+        return make_response(500, {"error": {"code": "ProcessingError", "msg": "Unable to load event body..."}})
+    try:
+        request_body = json.loads(event_body)
     except:
         return make_response(400, {"error": {"code": "InvalidJson", "msg": "Request body was not valid JSON."}})
 
