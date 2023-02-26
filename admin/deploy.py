@@ -215,7 +215,7 @@ def stack_cloudfront(ctx):
         # params["WebACLArn"] = adminutils.get_cft_output(ctx["args"].env, "WAF", "WebACLArn", region="us-east-1")
         upsert_stack(ctx, stackname, "../cft/cloudfront.yml", params)
         push_web_files(ctx)
-        invalidate_web_file_cache(ctx)
+        # invalidate_web_file_cache(ctx)
     elif ctx["args"].action == "delete":
         delete_stack(ctx, stackname)
 
@@ -434,6 +434,8 @@ def stack_apigateway(ctx):
         view = {}
         view.update(ctx["local"])
         view["env_prefix"] = ctx["args"].env
+        sanitized_view = {}
+        sanitized_view.update(view)
         cfn = boto3.client("cloudformation")
         resources = cfn.describe_stack_resources(StackName=components_stackname)["StackResources"]
         for resource in resources:
@@ -442,17 +444,37 @@ def stack_apigateway(ctx):
                 nested_lambda_name = [out["OutputValue"] for out in nested_stack["Outputs"] if out["OutputKey"] == "LambdaName"][0]
                 nested_lambda_arn = [out["OutputValue"] for out in nested_stack["Outputs"] if out["OutputKey"] == "LambdaArn"][0]
                 view[f"lambda_{nested_lambda_name}"] = f"arn:aws:apigateway:us-east-2:lambda:path/2015-03-31/functions/{nested_lambda_arn}/invocations"
+                sanitized_view[f"lambda_{nested_lambda_name}"] = "REDACTED"
         lambda_stackname = f"tehBot-{ctx['args'].env}Lambdas"
         stack = cfn.describe_stacks(StackName=lambda_stackname)["Stacks"][0]
         webhook_lambda_arn = [out["OutputValue"] for out in stack["Outputs"] if out["OutputKey"] == "WebhookLambdaArn"][0]
         view["lambda_discord_webhook"] = f"arn:aws:apigateway:us-east-2:lambda:path/2015-03-31/functions/{webhook_lambda_arn}/invocations"
+        sanitized_view["lambda_discord_webhook"] = "REDACTED"
 
         openapi_bodystr = template.render(**view)
         openapi_body = io.BytesIO()
         openapi_body.write(openapi_bodystr.encode())
         openapi_body.seek(0)
         s3.put_object(Bucket=lambda_bucket, Key=f"openapi_{lambda_version}.yml", Body=openapi_body)
+        # openapi_body.seek(0)
+        # time.sleep(0.1)
+        # s3.put_object_acl(Bucket=lambda_bucket, Key=f"openapi_{lambda_version}.yml", ACL="public-read")
 
+        #push docs!
+        web_bucket = adminutils.get_cft_resource(ctx["args"].env, "Buckets", "WebBucket")
+        openapi_sanitized_bodystr = template.render(**sanitized_view)
+        openapi_sanitized_body = io.BytesIO()
+        openapi_sanitized_body.write(openapi_sanitized_bodystr.encode())
+        openapi_sanitized_body.seek(0)
+        # s3.put_object(Bucket=lambda_bucket, Key=f"openapi_{lambda_version}.yml", Body=openapi_sanitized_body)
+        s3.put_object(Bucket=web_bucket, Key=f"docs/openapi_{lambda_version}.yml", ContentType="text/plain", Body=openapi_sanitized_body)
+        view["openapi_url"] = f"{ctx['local']['tehbot_web_url']}/docs/openapi_{lambda_version}.yml"
+        docstemplate = jinja_api_env.get_template("docs.html")
+        apidocs_bodystr = docstemplate.render(**view)
+        apidocs_body = io.BytesIO()
+        apidocs_body.write(apidocs_bodystr.encode())
+        apidocs_body.seek(0)
+        s3.put_object(Bucket=web_bucket, Key=f"docs/redoc.html", ContentType="text/html", Body=apidocs_body)
         
         params = {}
         params["CertificateArn"] = ctx["local"]["cert_arn"]
@@ -530,3 +552,5 @@ if __name__ == "__main__":
     deps_path = "../lambdas/shared_deps_" + ctx["now"].replace(":","_")
     if os.path.exists(deps_path):
         shutil.rmtree(deps_path) #clear the shared deps dir when done.
+    if "apigateway" in stacks or "cloudfront" in stacks:
+        invalidate_web_file_cache(ctx)

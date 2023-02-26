@@ -50,7 +50,7 @@ def lambda_handler(event, context):
         return make_response(400, {"error": {"code": "InvalidRequestParameter", "msg": "'name' is a required parameter."}})
     other = Quote.find_by_name(name, guild_id)
     if other is not None:
-        return make_response(400, {"error": {"code": "InvalidRequestParameter", "msg": "Name already exists."}})
+        return make_response(400, {"error": {"code": "QuoteAlreadyExists", "msg": "Name already exists."}})
 
     try:
         url = request_body["url"]
@@ -59,14 +59,14 @@ def lambda_handler(event, context):
     try:
         requests.head(url).raise_for_status()
     except:
-        return make_response(400, {"error": {"code": "InvalidRequestParameter", "msg": "URL is invalid or not reachable."}})
+        return make_response(400, {"error": {"code": "UnreachableUrl", "msg": "URL is invalid or not reachable."}})
     
     try:
         tags = request_body["tags"]
     except:
         return make_response(400, {"error": {"code": "InvalidRequestParameter", "msg": "'tags' is a required parameter."}})
     if len(tags) == 0:
-        return make_response(400, {"error": {"code": "InvalidRequestParameter", "msg": "Tags must not be empty."}})
+        return make_response(400, {"error": {"code": "NoTags", "msg": "Tags must not be empty."}})
 
     quote = Quote(url, name, set(tags), guild_id)
     quote.save()

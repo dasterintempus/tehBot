@@ -68,9 +68,9 @@ paths:
             type: string
       tags:
         - quotes
-      summary: Get all quotes.
+      summary: List all quotes
       description: Get all quotes for this guild. See /guilds/{guild_id}/quotes/search for searching.
-      operationId: getQuotes
+      operationId: listQuotes
       responses:
         '200':
           description: Successful operation
@@ -86,18 +86,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/APIError"
-        '401':
-          description: Token Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
         '403':
-          description: Authentication Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
+          $ref: "#/components/responses/Forbidden"
       x-amazon-apigateway-integration:
         uri: "{{lambda_quotes_get}}"
         httpMethod: "POST"
@@ -141,19 +131,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/APIError"
-        '401':
-          description: Token Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
+                $ref: "#/components/schemas/QuoteCreateError"
         '403':
-          description: Authentication Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
+          $ref: "#/components/responses/Forbidden"
       x-amazon-apigateway-integration:
         uri: "{{lambda_quotes_post}}"
         httpMethod: "POST"
@@ -201,18 +181,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/APIError"
-        '401':
-          description: Token Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
         '403':
-          description: Authentication Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
+          $ref: "#/components/responses/Forbidden"
       x-amazon-apigateway-integration:
         uri: "{{lambda_quotes_search_post}}"
         httpMethod: "POST"
@@ -256,19 +226,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/APIError"
-        '401':
-          description: Token Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
+                $ref: "#/components/schemas/QuoteDeleteError"
         '403':
-          description: Authentication Error
+          $ref: "#/components/responses/Forbidden"
+        '404':
+          description: Quote Not Found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/APIError"
+                $ref: "#/components/schemas/QuoteDeleteError"
       x-amazon-apigateway-integration:
         uri: "{{lambda_quote_name_delete}}"
         httpMethod: "POST"
@@ -313,19 +279,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/APIError"
-        '401':
-          description: Token Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
+                $ref: "#/components/schemas/QuoteUpdateError"
         '403':
-          description: Authentication Error
+          $ref: "#/components/responses/Forbidden"
+        '404':
+          description: Quote Not Found
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/APIError"
+                $ref: "#/components/schemas/QuoteUpdateError"
       x-amazon-apigateway-integration:
         uri: "{{lambda_quote_name_patch}}"
         httpMethod: "POST"
@@ -360,18 +322,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/APIError"
-        '403':
-          description: Authentication Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
-        '500':
-          description: Processing Error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/APIError"
       x-amazon-apigateway-integration:
         uri: "{{lambda_auth_token_post}}"
         httpMethod: "POST"
@@ -380,6 +330,17 @@ paths:
         type: "aws_proxy"
 
 components:
+  responses:
+    Forbidden:
+      description: Authentication Error
+      application/json:
+        content:
+          type: object
+          properties:
+            message:
+              type: string
+              enum:
+                - "Forbidden"
   schemas:
     AuthTokenRequest:
       type: object
@@ -457,6 +418,46 @@ components:
             msg:
               type: string
               description: "A user-friendly error message."
+    QuoteUpdateError:
+      allOf:
+        - $ref: '#/components/schemas/APIError'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  enum:
+                    - NotFound
+                    - InvalidJson
+                    - QuoteAlreadyExists
+                    - NoTags
+    QuoteDeleteError:
+      allOf:
+        - $ref: '#/components/schemas/APIError'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  enum:
+                    - NotFound
+    QuoteCreateError:
+      allOf:
+        - $ref: '#/components/schemas/APIError'
+        - type: object
+          properties:
+            error:
+              type: object
+              properties:
+                code:
+                  enum:
+                    - InvalidJson
+                    - InvalidRequestParameter
+                    - UnreachableUrl
+                    - QuoteAlreadyExists
+                    - NoTags
     DiscordInteractionResponse:
       type: object
       properties:
