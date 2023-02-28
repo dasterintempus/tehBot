@@ -11,7 +11,7 @@ from cmds import lobby_admin, lobby_optin, lobby_optout, lobby_preferences, lobb
 from cmds import quote_search, quote_suggest
 from cmds import quotemod_add, quotemod_delete, quotemod_print, quotemod_list, quotemod_modify_tags
 from cmds import quotemod_alias_add, quotemod_alias_delete, quotemod_alias_print, quotemod_alias_list, quotemod_alias_modify_values
-from cmds import generate_tierlist
+# from cmds import generate_tierlist
 from cmds import meta_maintenance_start, meta_maintenance_end
 
 # def say_cmd(body):

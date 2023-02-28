@@ -26,15 +26,16 @@ def get_cft_output(env, stack, outputkey, region="us-east-2"):
     return output["OutputValue"]
 
 env_prefix = os.environ["ENV_PREFIX"]
+botosession = boto3.Session(region_name="us-east-2")
 # print(env_prefix)
 QUEUE_URL = get_cft_output(env_prefix, "Queues", "InteractionDaemonQueueUrl")
 CACHE_BUCKET = get_cft_output(env_prefix, "Buckets", "CacheBucket")
 SECRETS_ARN = get_cft_output(env_prefix, "Secrets", "LambdaSecretsArn")
-secrets = boto3.client("secretsmanager")
+secrets = botosession.client("secretsmanager")
 SECRET_BLOB = json.loads(secrets.get_secret_value(SecretId=SECRETS_ARN)["SecretString"])
 os.environ["SECRETS_ARN"] = SECRETS_ARN
-
-from tehbot.discord import api as discord_api
+os.environ["AWS_REGION"] = "us-east-2"
+from discord import api as discord_api
 
 RANDOM_TIERLISTS = [
     "https://tiermaker.com/create/guilty-gear-xrd-rev-2--tier-list-15358858",
@@ -195,7 +196,7 @@ def handle_queue_event(body):
 
 
 if __name__ == "__main__":
-    sqs = boto3.client("sqs")
+    sqs = botosession.client("sqs")
     while True:
         r = sqs.receive_message(QueueUrl=QUEUE_URL, WaitTimeSeconds=20, VisibilityTimeout=60)
         # print(r)

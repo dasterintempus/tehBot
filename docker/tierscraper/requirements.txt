@@ -2,4 +2,4 @@ cfscrape
 # beautifulsoup4
 boto3
 Pillow
-/usr/src/app/tehbot-0.0.1-py3-none-any.whl
+# /usr/src/app/tehbot-0.0.1-py3-none-any.whl
