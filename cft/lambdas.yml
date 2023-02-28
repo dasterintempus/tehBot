@@ -36,6 +36,8 @@ Resources:
         Variables:
           SQSQUEUE_INTERACTIONS: !ImportValue
             'Fn::Sub': "tehBot-${EnvPrefix}InteractionQueueUrl"
+          SQSQUEUE_INTERACTIONS_DAEMON: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}InteractionDaemonQueueUrl"
           SECRETS_ARN: !ImportValue
             'Fn::Sub': "tehBot-${EnvPrefix}LambdaSecretsArn"
           DYNAMOTABLE_SETTINGS: !ImportValue

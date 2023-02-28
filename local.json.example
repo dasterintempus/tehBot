@@ -12,6 +12,7 @@
         "discord_oauth_url": "",
         "tehbot_api_url": "",
         "tehbot_web_url": "",
-        "contact_email": ""
+        "contact_email": "",
+        "daemon_role_arn": ""
     }
 }

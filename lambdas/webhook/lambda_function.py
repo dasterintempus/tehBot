@@ -15,6 +15,7 @@ secrets = boto3.client("secretsmanager")
 secret_blob = json.loads(secrets.get_secret_value(SecretId=secrets_arn)["SecretString"])
 PUBLIC_KEY = secret_blob["discord_public_key"]
 QUEUE_URL = os.environ.get("SQSQUEUE_INTERACTIONS")
+DAEMON_QUEUE_URL = os.environ.get("SQSQUEUE_INTERACTIONS_DAEMON")
 # DEVQUEUE_URL = os.environ.get("SQSQUEUE_DEVINTERACTIONS")
 
 verify_key = VerifyKey(bytes.fromhex(PUBLIC_KEY))
@@ -60,6 +61,15 @@ def forward_response(bodystr, interaction_type):
         return json_response({"type": 4, "data": {"content": ":eyes:"}})
     else:
         return json_response({"type": 5})
+    
+def forward_response_daemon(bodystr, interaction_type):
+    sqs = boto3.client("sqs")
+    print(DAEMON_QUEUE_URL)
+    sqs.send_message(QueueUrl=DAEMON_QUEUE_URL, MessageBody=bodystr)
+    if interaction_type == 3:
+        return json_response({"type": 4, "data": {"content": ":eyes:"}})
+    else:
+        return json_response({"type": 5})
 
 def interact(event, context):
     if not verify(event):
@@ -86,6 +96,8 @@ def interact(event, context):
         return json_response({"type": 1})
     elif body["data"]["name"] in ("chart", "lobby", "quote", "quotemod", "SuggestQuote"):
         return forward_response(event["body"], body["data"]["type"])
+    elif body["data"]["name"] in ("tierlist",):
+        return forward_response_daemon(event["body"], body["data"]["type"])
     elif body["data"]["name"] in ("say",):
         return json_response({"type": 4, "data": {
             "content": "This command has been removed :( Please use '!botsing' instead."

@@ -4,12 +4,15 @@ Parameters:
   EnvPrefix:
     Type: String
     Default: ""
+  DaemonRoleArn:
+    Type: String
 Resources:
   InteractionQueue:
     Type: AWS::SQS::Queue
     Properties:
       MessageRetentionPeriod: 3600
       VisibilityTimeout: 120
+      SqsManagedSseEnabled: false
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
   InteractionQueuePolicy:
@@ -41,6 +44,42 @@ Resources:
             Resource: "*"
       Queues:
         - !Ref InteractionQueue
+  InteractionDaemonQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 3600
+      VisibilityTimeout: 120
+      SqsManagedSseEnabled: false
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  InteractionDaemonQueuePolicy:
+    Type: AWS::SQS::QueuePolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:root"
+            Action: "SQS:*"
+            Resource: "*"
+          - Effect: Allow
+            Principal:
+              AWS: !ImportValue
+                'Fn::Sub': "tehBot-${EnvPrefix}WebhookLambdaRoleArn"
+            Action: "SQS:SendMessage"
+            Resource: "*"
+          - Effect: Allow
+            Principal:
+              AWS: !Ref DaemonRoleArn
+            Action:
+              - "SQS:ChangeMessageVisibility"
+              - "SQS:DeleteMessage"
+              - "SQS:ReceiveMessage"
+              - "SQS:GetQueueAttributes"
+            Resource: "*"
+      Queues:
+        - !Ref InteractionDaemonQueue
 Outputs:
   InteractionQueueUrl:
     Value: !Ref InteractionQueue
@@ -50,3 +89,11 @@ Outputs:
     Value: !GetAtt [InteractionQueue, Arn]
     Export:
       Name: !Sub "tehBot-${EnvPrefix}InteractionQueueArn"
+  InteractionDaemonQueueUrl:
+    Value: !Ref InteractionDaemonQueue
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}InteractionDaemonQueueUrl"
+  InteractionDaemonQueueArn:
+    Value: !GetAtt [InteractionDaemonQueue, Arn]
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}InteractionDaemonQueueArn"

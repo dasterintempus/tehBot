@@ -351,7 +351,9 @@ def stack_roles(ctx):
 def stack_queues(ctx):
     stackname = f"tehBot-{ctx['args'].env}Queues"
     if ctx["args"].action == "upsert":
-        upsert_stack(ctx, stackname, "../cft/queues.yml", {})
+        params = {}
+        params["DaemonRoleArn"] = ctx["local"]["daemon_role_arn"]
+        upsert_stack(ctx, stackname, "../cft/queues.yml", params)
     elif ctx["args"].action == "delete":
         delete_stack(ctx, stackname)
 
