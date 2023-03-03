@@ -2,8 +2,8 @@ from tehbot.discord import api as discord_api
 from tehbot.steam import api as steam_api, SteamAPIException
 from tehbot.steam.lobbies.players import Player
 from tehbot.steam.lobbies import Lobby, LobbyAlreadyExistsException, LobbyProfileNotLinkedException, LobbyNotFoundException
-from tehbot.aws import client as awsclient
-from tehbot.settings import get_settings, upsert_settings
+# from tehbot.aws import client as awsclient
+# from tehbot.settings import get_settings, upsert_settings
 from tehbot.util import CONTEXT
 from steam.steamid import SteamID
 from steam.client import SteamClient

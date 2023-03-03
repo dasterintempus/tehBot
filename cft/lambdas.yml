@@ -8,10 +8,10 @@ Parameters:
     Type: String
   CronVersion:
     Type: String
-  WorkerDockerImageUri:
+  WorkerVersion:
     Type: String
-  # WebVersion:
-  #   Type: String
+  HeavyWorkerDockerImageUri:
+    Type: String
   RootDiscordUserId:
     Type: String
 Resources:
@@ -36,36 +36,13 @@ Resources:
         Variables:
           SQSQUEUE_INTERACTIONS: !ImportValue
             'Fn::Sub': "tehBot-${EnvPrefix}InteractionQueueUrl"
-          # SQSQUEUE_INTERACTIONS_DAEMON: !ImportValue
-          #   'Fn::Sub': "tehBot-${EnvPrefix}InteractionDaemonQueueUrl"
+          SQSQUEUE_INTERACTIONS_HEAVY: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}InteractionHeavyQueueUrl"
           SECRETS_ARN: !ImportValue
             'Fn::Sub': "tehBot-${EnvPrefix}LambdaSecretsArn"
           DYNAMOTABLE_SETTINGS: !ImportValue
             'Fn::Sub': "tehBot-${EnvPrefix}SettingsTable"
-  # WebLambda:
-  #   Type: AWS::Lambda::Function
-  #   Properties:
-  #     Code:
-  #       S3Bucket: !ImportValue
-  #         'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
-  #       S3Key: !Sub webhook_package_${WebVersion}.zip
-  #     Handler: lambda_function.lambda_handler
-  #     Role: !ImportValue
-  #       'Fn::Sub': "tehBot-${EnvPrefix}WebLambdaRoleArn"
-  #     Runtime: "python3.9"
-  #     PackageType: Zip
-  #     Layers:
-  #       - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:901920570463:layer:aws-otel-python-amd64-ver-1-11-1:2"
-  #     TracingConfig:
-  #       Mode: Active
-  #     Environment:
-  #       Variables:
-  #         S3BUCKET_TEMPLATES: !ImportValue
-  #           'Fn::Sub': "tehBot-${EnvPrefix}TemplateBucket"
-  #         SECRETS_ARN: !ImportValue
-  #           'Fn::Sub': "tehBot-${EnvPrefix}LambdaSecretsArn"
-  #         DYNAMOTABLE_SETTINGS: !ImportValue
-  #           'Fn::Sub': "tehBot-${EnvPrefix}SettingsTable"
+  
   CronLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -93,25 +70,25 @@ Resources:
             'Fn::Sub': "tehBot-${EnvPrefix}SettingsTable"
           DYNAMOTABLE_API: !ImportValue
             'Fn::Sub': "tehBot-${EnvPrefix}ApiTable"
+  
   WorkerLambda:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-        ImageUri: !Ref WorkerDockerImageUri
-        # S3Bucket: !ImportValue
-          # 'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
-        # S3Key: !Sub worker_package_${WorkerVersion}.zip
-      # Handler: lambda_function.lambda_handler
+        S3Bucket: !ImportValue
+          'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
+        S3Key: !Sub worker_package_${WorkerVersion}.zip
+      Handler: lambda_function.lambda_handler
       Role: !ImportValue
         'Fn::Sub': "tehBot-${EnvPrefix}WorkerLambdaRoleArn"
-      # Runtime: "python3.9"
-      PackageType: Image
+      Runtime: "python3.9"
+      PackageType: Zip
       Timeout: 90
       MemorySize: 160
-      # Layers:
-      #   - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:901920570463:layer:aws-otel-python-amd64-ver-1-11-1:2"
-      # TracingConfig:
-      #   Mode: Active
+      Layers:
+        - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:901920570463:layer:aws-otel-python-amd64-ver-1-11-1:2"
+      TracingConfig:
+        Mode: Active
       Environment:
         Variables:
           DYNAMOTABLE_CHART: !ImportValue
@@ -144,6 +121,49 @@ Resources:
       FunctionName: !GetAtt WorkerLambda.Arn
       FunctionResponseTypes:
         - ReportBatchItemFailures
+  
+  HeavyWorkerLambda:
+    Type: AWS::Lambda::Function
+    Properties:
+      Code:
+        ImageUri: !Ref HeavyWorkerDockerImageUri
+      Role: !ImportValue
+        'Fn::Sub': "tehBot-${EnvPrefix}WorkerLambdaRoleArn"
+      PackageType: Image
+      Timeout: 90
+      MemorySize: 160
+      Environment:
+        Variables:
+          DYNAMOTABLE_CHART: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}ChartTable"
+          DYNAMOTABLE_SETTINGS: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}SettingsTable"
+          DYNAMOTABLE_STEAM_LOBBY: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}SteamLobbyTable"
+          DYNAMOTABLE_QUOTES: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}QuotesTable"
+          S3BUCKET_CACHE: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}CacheBucket"
+          SECRETS_ARN: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}LambdaSecretsArn"
+          ROOT_DISCORD_USER_ID: !Ref RootDiscordUserId
+  HeavyWorkerPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !Ref HeavyWorkerLambda
+      Principal: sqs.amazonaws.com
+      SourceArn: !ImportValue
+        'Fn::Sub': "tehBot-${EnvPrefix}InteractionHeavyQueueArn"
+  HeavyWorkerSourceMapping:
+    Type: AWS::Lambda::EventSourceMapping
+    Properties:
+      BatchSize: 1
+      EventSourceArn: !ImportValue
+        'Fn::Sub': "tehBot-${EnvPrefix}InteractionHeavyQueueArn"
+      FunctionName: !GetAtt HeavyWorkerLambda.Arn
+      FunctionResponseTypes:
+        - ReportBatchItemFailures
 Outputs:
   WebhookLambda:
     Value: !Ref WebhookLambda
@@ -153,14 +173,6 @@ Outputs:
     Value: !GetAtt [WebhookLambda, Arn]
     Export:
       Name: !Sub "tehBot-${EnvPrefix}WebhookLambdaArn"
-  # WebLambda:
-  #   Value: !Ref WebLambda
-  #   Export:
-  #     Name: !Sub "tehBot-${EnvPrefix}WebLambda"
-  # WebLambdaArn:
-  #   Value: !GetAtt [WebLambda, Arn]
-  #   Export:
-  #     Name: !Sub "tehBot-${EnvPrefix}WebLambdaArn"
   CronLambda:
     Value: !Ref CronLambda
     Export:
@@ -177,3 +189,11 @@ Outputs:
     Value: !GetAtt [WorkerLambda, Arn]
     Export:
       Name: !Sub "tehBot-${EnvPrefix}WorkerLambdaArn"
+  HeavyWorkerLambda:
+    Value: !Ref HeavyWorkerLambda
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}HeavyWorkerLambda"
+  HeavyWorkerLambdaArn:
+    Value: !GetAtt [HeavyWorkerLambda, Arn]
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}HeavyWorkerLambdaArn"

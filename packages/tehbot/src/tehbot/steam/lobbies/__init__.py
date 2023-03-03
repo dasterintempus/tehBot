@@ -1,5 +1,5 @@
 from datetime import datetime
-from ...discord import api as discord_api, cdn as discord_cdn, RateLimitException
+from ...discord import api as discord_api#, cdn as discord_cdn, RateLimitException
 from ...aws import client as awsclient
 import os
 import uuid

@@ -6,7 +6,7 @@ import hashlib
 
 from tehbot.discord import api as discord_api
 from tehbot.util import CONTEXT
-from cmds import chart_show, chart_user, chart_variant, chart_settings
+# from cmds import chart_show, chart_user, chart_variant, chart_settings
 from cmds import lobby_admin, lobby_optin, lobby_optout, lobby_preferences, lobby_link, lobby_friend, lobby_url, lobby_private_url
 from cmds import quote_search, quote_suggest
 from cmds import quotemod_add, quotemod_delete, quotemod_print, quotemod_list, quotemod_modify_tags
@@ -35,15 +35,15 @@ from cmds import meta_maintenance_start, meta_maintenance_end
 #     files["payload_json"] = ("", json.dumps(outbody), "application/json")
 #     return True, {"files": files}
 
-def chart_cmd(body):
-    if body["data"]["options"][0]["name"] == "show":
-        return chart_show()
-    elif body["data"]["options"][0]["name"] == "user":
-        return chart_user(body)
-    elif body["data"]["options"][0]["name"] == "variant":
-        return chart_variant(body)
-    elif body["data"]["options"][0]["name"] == "settings":
-        return chart_settings(body)
+# def chart_cmd(body):
+#     if body["data"]["options"][0]["name"] == "show":
+#         return chart_show()
+#     elif body["data"]["options"][0]["name"] == "user":
+#         return chart_user(body)
+#     elif body["data"]["options"][0]["name"] == "variant":
+#         return chart_variant(body)
+#     elif body["data"]["options"][0]["name"] == "settings":
+#         return chart_settings(body)
 
 def lobby_cmd(body):
     subcmd = body["data"]["options"][0]["name"]
@@ -95,9 +95,6 @@ def quotemod_alias_cmd(body):
     elif subcmd == "modify_values":
         return quotemod_alias_modify_values(body)
 
-def tierlist_cmd(body):
-    return generate_tierlist(body)
-
 def meta_record(body):
     subcmd = body["_meta"]
     if subcmd == "maintenance-start":
@@ -119,8 +116,8 @@ def handle_record(body):
     if "_meta" in body:
         response = meta_record(body)
         return response
-    elif body["data"]["name"] == "chart":
-        response = chart_cmd(body)
+    # elif body["data"]["name"] == "chart":
+    #     response = chart_cmd(body)
     elif body["data"]["name"] == "lobby":
         response = lobby_cmd(body)
     elif body["data"]["name"] == "quote":
@@ -129,8 +126,8 @@ def handle_record(body):
         response = quote_suggest(body)
     elif body["data"]["name"] == "quotemod":
         response = quotemod_cmd(body)
-    elif body["data"]["name"] == "tierlist":
-        response = tierlist_cmd(body)
+    # elif body["data"]["name"] == "tierlist":
+    #     response = tierlist_cmd(body)
     else:
         response = (False, {})
     print("Got Response")

@@ -287,22 +287,11 @@ def package_lambda(ctx, lambda_name, lambda_bucket, lambda_version):
 def package_heavy_lambda(ctx, lambda_name, lambda_version):
     dockerc: docker.DockerClient = ctx["docker"]
     try:
-        image, buildlogs = dockerc.images.build(path="../docker/worker/")
+        image, buildlogs = dockerc.images.build(path="../docker/heavyworker/")
     except docker.errors.BuildError:
         print(f"Failure with building docker image for heavy lambda {lambda_name}")
         raise
     image.tag(ctx['local']['heavyworker_ecrimage_uri'], lambda_version)
-    # try:
-    #     ecr = ctx["aws"].client("ecr")
-    #     token = ecr.get_authorization_token()
-    #     username, password = base64.b64decode(token['authorizationData'][0]['authorizationToken']).decode().split(':')
-    #     registry = token['authorizationData'][0]['proxyEndpoint'].replace("https://", "")
-    #     print(username, password, registry)
-    #     response = dockerc.login(username=username, password=password, registry=registry, reauth=True)
-    #     print(response)
-    # except:
-    #     print(f"Failure with authing to ECR to push docker image for heavy lambda {lambda_name}")
-    #     raise
     response = dockerc.images.push(ctx['local']['heavyworker_ecrimage_uri'], lambda_version, stream=True, decode=True)
     for responserow in response:
         if "error" in responserow:
@@ -319,9 +308,9 @@ def stack_lambdas(ctx):
             build_lambdabuilder_docker(ctx)
             
             lambda_version = ctx["now"]
-            for lambda_name in ("webhook", "cron"):
+            for lambda_name in ("webhook", "cron", "worker"):
                 package_lambda(ctx, lambda_name, lambda_bucket, lambda_version)
-            for heavy_lambda_name in ("worker",):
+            for heavy_lambda_name in ("heavyworker",):
                 package_heavy_lambda(ctx, heavy_lambda_name, lambda_version)
             time.sleep(1)
 
@@ -329,7 +318,8 @@ def stack_lambdas(ctx):
             lambda_version = ctx["args"].lambda_version
         params = {}
         params["WebhookVersion"] = lambda_version
-        params["WorkerDockerImageUri"] = f"{ctx['local']['heavyworker_ecrimage_uri']}:{lambda_version}"
+        params["WorkerVersion"] = lambda_version
+        params["HeavyWorkerDockerImageUri"] = f"{ctx['local']['heavyworker_ecrimage_uri']}:{lambda_version}"
         params["CronVersion"] = lambda_version
         params["RootDiscordUserId"] = ctx["local"]["root_discord_user_id"]
         stackname = f"tehBot-{ctx['args'].env}Lambdas"
