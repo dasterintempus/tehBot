@@ -13,6 +13,8 @@ import os
 import random
 import math
 
+from tehbot.util import BUCKET_NAME as CACHE_BUCKET
+
 def get_cft_output(env, stack, outputkey, region="us-east-2"):
     if env == "prod":
         env = ""
@@ -25,18 +27,6 @@ def get_cft_output(env, stack, outputkey, region="us-east-2"):
     output = [output for output in stack["Outputs"] if output["OutputKey"] == outputkey][0]
     return output["OutputValue"]
 
-env_prefix = os.environ["ENV_PREFIX"]
-botosession = boto3.Session(region_name="us-east-2")
-# print(env_prefix)
-QUEUE_URL = get_cft_output(env_prefix, "Queues", "InteractionDaemonQueueUrl")
-CACHE_BUCKET = get_cft_output(env_prefix, "Buckets", "CacheBucket")
-SECRETS_ARN = get_cft_output(env_prefix, "Secrets", "LambdaSecretsArn")
-secrets = botosession.client("secretsmanager")
-SECRET_BLOB = json.loads(secrets.get_secret_value(SecretId=SECRETS_ARN)["SecretString"])
-os.environ["SECRETS_ARN"] = SECRETS_ARN
-os.environ["AWS_REGION"] = "us-east-2"
-from discord import api as discord_api
-
 RANDOM_TIERLISTS = [
     "https://tiermaker.com/create/guilty-gear-xrd-rev-2--tier-list-15358858",
     "https://tiermaker.com/create/guilty-gear-strive-characters-2",
@@ -45,12 +35,11 @@ RANDOM_TIERLISTS = [
 CHARACTER_IMAGE_SIZE = (70, 70)
 
 RANDOM_TIERS = ["S", "A", "B", "C", "D"]
-RANDOM_RARE_TIERS = ["God", "Trash", "OP", "UP"]
-SORT_ORDER = ["God", "OP", "S", "A", "B", "C", "D", "UP", "Trash"]
+RANDOM_RARE_TIERS = ["God", "Trash", "OP", "UP", "Joke"]
+SORT_ORDER = ["God", "OP", "S", "A", "B", "C", "D", "UP", "Trash", "Joke"]
 TIER_COLORS = [(1.0, 0.5, 0.5), (1.0, 0.75, 0.5), (1.0, 0.875, 0.5), (1.0, 1.0, 0.5), (.75, 1.0, 0.5)]
 
-
-def handle_queue_event(body):
+def generate_tierlist(body):
     interaction_token = body["token"]
     if "options" in body["data"] and len(body["data"]["options"]) > 0:
         url = body["data"]["options"][0]["value"].lower()
@@ -118,8 +107,10 @@ def handle_queue_event(body):
             if obj["Key"].endswith(".png"):
                 im = Image.open(s3.get_object(Bucket=CACHE_BUCKET, Key=obj["Key"])["Body"])
                 images.append(im)
+    #ADVANCED ML WORK HERE
     random.shuffle(images)
 
+    #assign characters to tiers
     tiers = {}
     tiernames = set()
     character_count = len(images)
@@ -127,17 +118,21 @@ def handle_queue_event(body):
     for n in range(5):
         tier = []
         if random.randint(1,10) == 10:
+            #pick a rarer tier name
             while tiername := random.choice(RANDOM_RARE_TIERS):
                 if tiername not in tiernames:
                     break
             tiernames.add(tiername)
             tiers[tiername] = tier
         else:
+            #pick a normal tier name
             while tiername := random.choice(RANDOM_TIERS):
                 if tiername not in tiernames:
                     break
             tiernames.add(tiername)
             tiers[tiername] = tier
+        #how many characters in this tier?
+	    #formula figured out by advanced process of "trial and error until it looks right"
         assign_count = math.ceil(random.triangular(0.0, 1.0, 0.01*(n+1))*character_count/3)
         if assign_count > len(images):
             assign_count = len(images)
@@ -149,11 +144,12 @@ def handle_queue_event(body):
         tier.extend(images[:assign_count])
         del images[:assign_count]
         # print("post_assign_len", len(images))
+    #any remaining characters are also dumped into the last tier
     if len(images) + len(tier) > max_assign_count:
         max_assign_count = len(images) + len(tier)
     tier.extend(images)
 
-    # print(tiers.keys())
+    #sort so tier names appear in order
     sorted_tiernames = list(tiers.keys())
     sorted_tiernames.sort(key=lambda i: SORT_ORDER.index(i))
     # print(sorted_tiernames)
@@ -179,7 +175,6 @@ def handle_queue_event(body):
     out_body = io.BytesIO()
     out_im.save(out_body, "png")
     out_body.seek(0)
-    url = f"webhooks/{SECRET_BLOB['application_id']}/{interaction_token}/messages/@original"
     files = {}
     files["file[0]"] = ("tierlist.png", out_body)
     outbody = {
@@ -190,17 +185,6 @@ def handle_queue_event(body):
         }]
     }
     files["payload_json"] = ("", json.dumps(outbody), "application/json")
-    r = discord_api.patch(url, files=files)
+    return True, {"files": files}
 
     # out_im.save("out.png")
-
-
-if __name__ == "__main__":
-    sqs = botosession.client("sqs")
-    while True:
-        r = sqs.receive_message(QueueUrl=QUEUE_URL, WaitTimeSeconds=20, VisibilityTimeout=60)
-        # print(r)
-        if "Messages" in r:
-            for msg in r["Messages"]:
-                handle_queue_event(json.loads(msg["Body"]))
-        # time.sleep(5)

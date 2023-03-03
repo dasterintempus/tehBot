@@ -1,0 +1,6 @@
+Pillow
+steam[client]
+beautifulsoup4
+cfscrape
+boto3
+/tmp/tehbot-0.0.1-py3-none-any.whl

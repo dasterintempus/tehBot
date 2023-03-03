@@ -8,7 +8,7 @@ Parameters:
     Type: String
   CronVersion:
     Type: String
-  WorkerVersion:
+  WorkerDockerImageUri:
     Type: String
   # WebVersion:
   #   Type: String
@@ -36,8 +36,8 @@ Resources:
         Variables:
           SQSQUEUE_INTERACTIONS: !ImportValue
             'Fn::Sub': "tehBot-${EnvPrefix}InteractionQueueUrl"
-          SQSQUEUE_INTERACTIONS_DAEMON: !ImportValue
-            'Fn::Sub': "tehBot-${EnvPrefix}InteractionDaemonQueueUrl"
+          # SQSQUEUE_INTERACTIONS_DAEMON: !ImportValue
+          #   'Fn::Sub': "tehBot-${EnvPrefix}InteractionDaemonQueueUrl"
           SECRETS_ARN: !ImportValue
             'Fn::Sub': "tehBot-${EnvPrefix}LambdaSecretsArn"
           DYNAMOTABLE_SETTINGS: !ImportValue
@@ -97,20 +97,21 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       Code:
-        S3Bucket: !ImportValue
-          'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
-        S3Key: !Sub worker_package_${WorkerVersion}.zip
-      Handler: lambda_function.lambda_handler
+        ImageUri: !Ref WorkerDockerImageUri
+        # S3Bucket: !ImportValue
+          # 'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
+        # S3Key: !Sub worker_package_${WorkerVersion}.zip
+      # Handler: lambda_function.lambda_handler
       Role: !ImportValue
         'Fn::Sub': "tehBot-${EnvPrefix}WorkerLambdaRoleArn"
-      Runtime: "python3.9"
-      PackageType: Zip
+      # Runtime: "python3.9"
+      PackageType: Image
       Timeout: 90
       MemorySize: 160
-      Layers:
-        - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:901920570463:layer:aws-otel-python-amd64-ver-1-11-1:2"
-      TracingConfig:
-        Mode: Active
+      # Layers:
+      #   - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:901920570463:layer:aws-otel-python-amd64-ver-1-11-1:2"
+      # TracingConfig:
+      #   Mode: Active
       Environment:
         Variables:
           DYNAMOTABLE_CHART: !ImportValue
