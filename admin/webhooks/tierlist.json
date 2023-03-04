@@ -1,0 +1,13 @@
+{
+    "name": "tierlist",
+    "type": 1,
+    "description": "Displays totally accurate and well researched tierlists, on demand.",
+    "options": [
+        {
+            "name": "url",
+            "description": "Tiermaker URL",
+            "type": 3,
+            "required": false
+        }
+    ]
+}

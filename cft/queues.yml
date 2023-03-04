@@ -10,9 +10,18 @@ Resources:
     Properties:
       MessageRetentionPeriod: 3600
       VisibilityTimeout: 120
+      SqsManagedSseEnabled: false
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
-  InteractionQueuePolicy:
+  InteractionHeavyQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      MessageRetentionPeriod: 3600
+      VisibilityTimeout: 120
+      SqsManagedSseEnabled: false
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
+  InteractionQueuesPolicy:
     Type: AWS::SQS::QueuePolicy
     Properties:
       PolicyDocument:
@@ -41,6 +50,7 @@ Resources:
             Resource: "*"
       Queues:
         - !Ref InteractionQueue
+        - !Ref InteractionHeavyQueue
 Outputs:
   InteractionQueueUrl:
     Value: !Ref InteractionQueue
@@ -50,3 +60,11 @@ Outputs:
     Value: !GetAtt [InteractionQueue, Arn]
     Export:
       Name: !Sub "tehBot-${EnvPrefix}InteractionQueueArn"
+  InteractionHeavyQueueUrl:
+    Value: !Ref InteractionHeavyQueue
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}InteractionHeavyQueueUrl"
+  InteractionHeavyQueueArn:
+    Value: !GetAtt [InteractionHeavyQueue, Arn]
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}InteractionHeavyQueueArn"

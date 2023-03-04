@@ -1,4 +1,4 @@
-from ...discord import api as discord_api, cdn as discord_cdn, RateLimitException
+from ...discord import api as discord_api#, cdn as discord_cdn, RateLimitException
 from ...aws import build_dynamo_value, client as awsclient, extract_dynamo_value
 import os
 import uuid

@@ -13,6 +13,7 @@ import subprocess
 import shlex
 import pprint
 import requests
+import base64
 import io
 import jinja2
 import docker
@@ -220,10 +221,11 @@ def stack_cloudfront(ctx):
         delete_stack(ctx, stackname)
 
 def build_lambdabuilder_docker(ctx):
+    dockerc: docker.DockerClient = ctx["docker"]
     if "docker_lambdabuilder_image" not in ctx:
         print(f"{datetime.datetime.now().isoformat()} - Building lambdabuilder docker image")
         try:
-            image, buildlogs = ctx["docker"].images.build(path="../docker/lambda_builder/")
+            image, buildlogs = dockerc.images.build(path="../docker/lambda_builder/")
         except docker.errors.BuildError:
             print("Failure with building docker image for lambda builds")
             raise
@@ -247,6 +249,7 @@ def build_tehbot_package(ctx):
         os.mkdir(deps_path) #remake the folder
 
 def package_lambda(ctx, lambda_name, lambda_bucket, lambda_version):
+    dockerc: docker.DockerClient = ctx["docker"]
     s3 = ctx["aws"].client("s3")
 
     try:
@@ -256,7 +259,7 @@ def package_lambda(ctx, lambda_name, lambda_bucket, lambda_version):
 
     try:
         deps_path = "../lambdas/shared_deps_" + ctx["now"].replace(":","_")
-        logs = ctx["docker"].containers.run(ctx["docker_lambdabuilder_image"],
+        logs = dockerc.containers.run(ctx["docker_lambdabuilder_image"],
             command=[f"{lambda_name}_package_{lambda_version}", "/usr/src/pylib/tehbot/tehbot-0.0.1-py3-none-any.whl"],
             volumes=[
                 os.path.abspath(f"../lambdas/{lambda_name}")+":/usr/src/app",
@@ -280,6 +283,22 @@ def package_lambda(ctx, lambda_name, lambda_bucket, lambda_version):
     
     os.remove(f"../lambdas/{lambda_name}/{lambda_name}_package_{lambda_version}.zip")
 
+"""aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 105824585986.dkr.ecr.us-east-2.amazonaws.com"""
+def package_heavy_lambda(ctx, lambda_name, lambda_version):
+    dockerc: docker.DockerClient = ctx["docker"]
+    try:
+        image, buildlogs = dockerc.images.build(path="../docker/heavyworker/")
+    except docker.errors.BuildError:
+        print(f"Failure with building docker image for heavy lambda {lambda_name}")
+        raise
+    image.tag(ctx['local']['heavyworker_ecrimage_uri'], lambda_version)
+    response = dockerc.images.push(ctx['local']['heavyworker_ecrimage_uri'], lambda_version, stream=True, decode=True)
+    for responserow in response:
+        if "error" in responserow:
+            print(f"Failure with pushing docker image for heavy lambda {lambda_name}")
+            print(responserow["error"])
+            sys.exit(1)
+
 @stack_handler("lambdas")
 def stack_lambdas(ctx):
     if ctx["args"].action == "upsert":
@@ -289,8 +308,10 @@ def stack_lambdas(ctx):
             build_lambdabuilder_docker(ctx)
             
             lambda_version = ctx["now"]
-            for lambda_name in ("worker", "webhook", "cron"):
+            for lambda_name in ("webhook", "cron", "worker"):
                 package_lambda(ctx, lambda_name, lambda_bucket, lambda_version)
+            for heavy_lambda_name in ("heavyworker",):
+                package_heavy_lambda(ctx, heavy_lambda_name, lambda_version)
             time.sleep(1)
 
         else:
@@ -298,6 +319,7 @@ def stack_lambdas(ctx):
         params = {}
         params["WebhookVersion"] = lambda_version
         params["WorkerVersion"] = lambda_version
+        params["HeavyWorkerDockerImageUri"] = f"{ctx['local']['heavyworker_ecrimage_uri']}:{lambda_version}"
         params["CronVersion"] = lambda_version
         params["RootDiscordUserId"] = ctx["local"]["root_discord_user_id"]
         stackname = f"tehBot-{ctx['args'].env}Lambdas"
@@ -351,7 +373,9 @@ def stack_roles(ctx):
 def stack_queues(ctx):
     stackname = f"tehBot-{ctx['args'].env}Queues"
     if ctx["args"].action == "upsert":
-        upsert_stack(ctx, stackname, "../cft/queues.yml", {})
+        params = {}
+        # params["DaemonRoleArn"] = ctx["local"]["daemon_role_arn"]
+        upsert_stack(ctx, stackname, "../cft/queues.yml", params)
     elif ctx["args"].action == "delete":
         delete_stack(ctx, stackname)
 
@@ -533,7 +557,7 @@ if __name__ == "__main__":
         stacks.reverse()
 
     ctx = {}
-    ctx["now"] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    ctx["now"] = datetime.datetime.now().strftime("%Y-%m-%dT%H_%M_%S")
     ctx["local"] = local
     ctx["secrets"] = secrets
     ctx["args"] = args
