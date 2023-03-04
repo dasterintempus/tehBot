@@ -41,7 +41,27 @@ def chart_cmd(body):
         return chart_settings(body)
 
 def tierlist_cmd(body):
-    return generate_tierlist(body)
+    if "options" in body["data"] and len(body["data"]["options"]) > 0:
+        url = body["data"]["options"][0]["value"].lower()
+    else:
+        url = None
+    out_im = generate_tierlist(url)
+    if out_im is None:
+        return True, {"json": {"content": "An Error Occured. :("}}
+    out_body = io.BytesIO()
+    out_im.save(out_body, "png")
+    out_body.seek(0)
+    files = {}
+    files["file[0]"] = ("tierlist.png", out_body)
+    outbody = {
+        "embeds": [{
+            "image": {
+                "url": "attachment://tierlist.png"
+            }
+        }]
+    }
+    files["payload_json"] = ("", json.dumps(outbody), "application/json")
+    return True, {"files": files}
 
 def handle_record(body):
     print(json.dumps(body))
@@ -94,3 +114,7 @@ def lambda_handler(event, context):
             failures.append(record["messageId"])
     print(f"Items failed: {len(failures)}")
     return {"batchItemFailures": [{"itemIdentifier": failure} for failure in failures]}
+
+if __name__ == "__main__":
+    out_im = generate_tierlist(None)
+    out_im.save("out.png")

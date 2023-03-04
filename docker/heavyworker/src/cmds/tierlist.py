@@ -8,6 +8,7 @@ import sys
 import io
 from PIL import Image, ImageDraw, ImageFont
 import re
+import traceback
 import hashlib
 import os
 import random
@@ -39,11 +40,9 @@ RANDOM_RARE_TIERS = ["God", "Trash", "OP", "UP", "Joke"]
 SORT_ORDER = ["God", "OP", "S", "A", "B", "C", "D", "UP", "Trash", "Joke"]
 TIER_COLORS = [(1.0, 0.5, 0.5), (1.0, 0.75, 0.5), (1.0, 0.875, 0.5), (1.0, 1.0, 0.5), (.75, 1.0, 0.5)]
 
-def generate_tierlist(body):
-    interaction_token = body["token"]
-    if "options" in body["data"] and len(body["data"]["options"]) > 0:
-        url = body["data"]["options"][0]["value"].lower()
-    else:
+def generate_tierlist(url=None):
+    # interaction_token = body["token"]
+    if url is None:
         url = random.choice(RANDOM_TIERLISTS)
 
     category = url.rsplit("/", 1)[-1]
@@ -75,7 +74,11 @@ def generate_tierlist(body):
             dateLastEdited = edited_date_match.group(1)
             url = f"https://tiermaker.com/api/?type=templates-v2&id={category}&lastEdited={dateLastEdited}"
             # print(url)
-            apir = scraper.get(url)
+            try:
+                apir = scraper.get(url)
+            except:
+                traceback.print_exc()
+                return None
             for imagename in apir.json()[1:]:
                 url = f"https://tiermaker.com/{baseImagePath}/{imagename}"
                 # print(url)
@@ -172,19 +175,6 @@ def generate_tierlist(body):
             # char_im = char_im.resize(CHARACTER_IMAGE_SIZE)
             out_im.paste(char_im, (100+(char_n*CHARACTER_IMAGE_SIZE[0]), tier_n*CHARACTER_IMAGE_SIZE[1]))
 
-    out_body = io.BytesIO()
-    out_im.save(out_body, "png")
-    out_body.seek(0)
-    files = {}
-    files["file[0]"] = ("tierlist.png", out_body)
-    outbody = {
-        "embeds": [{
-            "image": {
-                "url": "attachment://tierlist.png"
-            }
-        }]
-    }
-    files["payload_json"] = ("", json.dumps(outbody), "application/json")
-    return True, {"files": files}
+    return out_im
 
     # out_im.save("out.png")
