@@ -3,3 +3,10 @@ requests
 docker
 jinja2
 build
+#make the linters happy
+steam[client]
+PyNaCl
+beautifulsoup4
+opentelemetry-instrumentation-botocore
+Pillow
+cfscrape
