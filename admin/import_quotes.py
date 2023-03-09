@@ -12,7 +12,7 @@ if __name__ == "__main__":
     from tehbot.quotes import Quote
 
     guild_name = sys.argv[2]
-    guild_id = local["guilds"][guild_name]
+    guild_id = adminutils.get_env_guildid(env, guild_name)
     
     quotes = []
     quotes.extend(Quote.find_all(guild_id))

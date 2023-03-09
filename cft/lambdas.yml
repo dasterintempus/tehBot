@@ -42,6 +42,14 @@ Resources:
             'Fn::Sub': "tehBot-${EnvPrefix}LambdaSecretsArn"
           DYNAMOTABLE_SETTINGS: !ImportValue
             'Fn::Sub': "tehBot-${EnvPrefix}SettingsTable"
+
+  WebhookLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !Ref WebhookLambda
+      Principal: apigateway.amazonaws.com
+      SourceAccount: !Sub "${AWS::AccountId}"
   
   CronLambda:
     Type: AWS::Lambda::Function
@@ -53,6 +61,7 @@ Resources:
       Handler: lambda_function.lambda_handler
       Role: !ImportValue
         'Fn::Sub': "tehBot-${EnvPrefix}CronLambdaRoleArn"
+      FunctionName: !Sub "tehBot-${EnvPrefix}CronLambda"
       Runtime: "python3.9"
       PackageType: Zip
       Timeout: 15
@@ -70,7 +79,59 @@ Resources:
             'Fn::Sub': "tehBot-${EnvPrefix}SettingsTable"
           DYNAMOTABLE_API: !ImportValue
             'Fn::Sub': "tehBot-${EnvPrefix}ApiTable"
-  
+  CronLambdaScheduleLobby:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: !Sub "ScheduleRule for (${EnvPrefix})"
+      ScheduleExpression: "rate(5 minutes)"
+      State: "ENABLED"
+      Targets: 
+        - Arn: !GetAtt [CronLambda, Arn]
+          Id: !Sub "Cron-Schedule-${EnvPrefix}"
+          Input: |
+            {
+              "op": "lobby_update"
+            }
+          # {
+          #   "op": "lobby_update",
+          #   "guildid": "${GuildId}"
+          # }
+  CronLambdaLobbyPerms:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt [CronLambda, Arn]
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt CronLambdaScheduleLobby.Arn
+  CronLambdaSelfPerms:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt [CronLambda, Arn]
+      Action: "lambda:InvokeFunction"
+      Principal: "lambda.amazonaws.com"
+      SourceArn: !GetAtt [CronLambda, Arn]
+  CronLambdaTokenCleanupSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: !Sub "ScheduleRule for token_cleanup (${EnvPrefix})"
+      ScheduleExpression: "rate(1 hour)"
+      State: "ENABLED"
+      Targets: 
+        - Arn: !GetAtt [CronLambda, Arn]
+          Id: "token_cleanup"
+          Input: |
+            {
+              "op": "token_cleanup"
+            }
+  CronLambdaTokenCleanupPerms:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt [CronLambda, Arn]
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt CronLambdaTokenCleanupSchedule.Arn
+
+
   WorkerLambda:
     Type: AWS::Lambda::Function
     Properties:
@@ -81,6 +142,7 @@ Resources:
       Handler: lambda_function.lambda_handler
       Role: !ImportValue
         'Fn::Sub': "tehBot-${EnvPrefix}WorkerLambdaRoleArn"
+      FunctionName: !Sub "tehBot-${EnvPrefix}WorkerLambda"
       Runtime: "python3.9"
       PackageType: Zip
       Timeout: 90
@@ -129,6 +191,7 @@ Resources:
         ImageUri: !Ref HeavyWorkerDockerImageUri
       Role: !ImportValue
         'Fn::Sub': "tehBot-${EnvPrefix}WorkerLambdaRoleArn"
+      FunctionName: !Sub "tehBot-${EnvPrefix}HeavyWorkerLambda"
       PackageType: Image
       Timeout: 90
       MemorySize: 160

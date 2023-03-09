@@ -325,16 +325,16 @@ def stack_lambdas(ctx):
         stackname = f"tehBot-{ctx['args'].env}Lambdas"
         upsert_stack(ctx, stackname, "../cft/lambdas.yml", params)
 
-        for guildname in ctx["local"]["guilds"]:
-            guildid = ctx["local"]["guilds"][guildname]
-            stackname = f"tehBot-{ctx['args'].env}LambdaSchedules{guildname}"
-            upsert_stack(ctx, stackname, "../cft/lambda_schedules.yml", {"GuildName": guildname, "GuildId": guildid})
+        # for guildname in ctx["local"]["guilds"]:
+        #     guildid = ctx["local"]["guilds"][guildname]
+        #     stackname = f"tehBot-{ctx['args'].env}LambdaSchedules{guildname}"
+        #     upsert_stack(ctx, stackname, "../cft/lambda_schedules.yml", {"GuildName": guildname, "GuildId": guildid})
         
     elif ctx["args"].action == "delete":
-        for guildname in ctx["local"]["guilds"]:
-            guildid = ctx["local"]["guilds"][guildname]
-            stackname = f"tehBot-{ctx['args'].env}LambdaSchedules{guildname}"
-            delete_stack(ctx, stackname)
+        # for guildname in ctx["local"]["guilds"]:
+        #     guildid = ctx["local"]["guilds"][guildname]
+        #     stackname = f"tehBot-{ctx['args'].env}LambdaSchedules{guildname}"
+        #     delete_stack(ctx, stackname)
         stackname = f"tehBot-{ctx['args'].env}Lambdas"
         delete_stack(ctx, stackname)
 
