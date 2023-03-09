@@ -8,7 +8,7 @@ if __name__ == "__main__":
     local = adminutils.get_local(env)
 
     guild_name = sys.argv[2]
-    guild_id = local["guilds"][guild_name]
+    guild_id = adminutils.get_env_guildid(env, guild_name)
 
     roletype = sys.argv[3]
 

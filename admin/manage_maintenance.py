@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     sqs = boto3.client("sqs")
     
-    for guildname in local["guilds"]:
-        guildid = local["guilds"][guildname]
+    for guildname, guildid in adminutils.get_env_guilds(env):
+        # guildid = local["guilds"][guildname]
         message["guildid"] = guildid
         sqs.send_message(QueueUrl=queue_url, MessageBody=json.dumps(message))

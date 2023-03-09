@@ -1,7 +1,8 @@
 import datetime
-from tehbot.settings import get_settings, upsert_settings
+from tehbot.settings import get_settings, upsert_settings, list_guilds
 from tehbot.steam.lobbies import Lobby, LobbyKey
 from tehbot.steam.lobbies.players import Player
+from tehbot.aws import client as awsclient
 from steam.utils.throttle import ConstantRateLimit
 import os
 import json
@@ -47,11 +48,17 @@ def lambda_handler(event, context):
     secret_blob = json.loads(secrets.get_secret_value(SecretId=secrets_arn)["SecretString"])
     CONTEXT["secrets"] = secret_blob
     CONTEXT["cache"] = {}
+    print(json.dumps(event))
 
     op = event["op"]
-
     if op == "lobby_update":
-        guildid = event["guildid"]
-        lobby_update(guildid)
+        if "guildid" in event:
+            guildid = event["guildid"]
+            lobby_update(guildid)
+        else:
+            guilds = list_guilds()
+            lam = awsclient("lambda")
+            for guildname, guildid in guilds:
+                lam.invoke(FunctionName=context.invoked_function_arn, InvocationType="Event", Payload=json.dumps({"op": op, "guildid": guildid}).encode())
     elif op == "token_cleanup":
         token_cleanup()

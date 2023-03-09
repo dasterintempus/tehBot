@@ -1,6 +1,19 @@
 import sys
 import json
 import boto3
+import os
+from tehbot.settings import get_guildid, list_guilds
+from typing import Optional, Iterable, Tuple
+
+def get_env_guildid(env:str, guild_name:str) -> str:
+    settings_table:str = get_cft_resource(env, "DynamoTables", "SettingsTable")
+    os.environ["DYNAMOTABLE_SETTINGS"] = settings_table
+    return get_guildid(guild_name)
+
+def get_env_guilds(env:str) -> Iterable[Tuple[str, str]]:
+    settings_table:str = get_cft_resource(env, "DynamoTables", "SettingsTable")
+    os.environ["DYNAMOTABLE_SETTINGS"] = settings_table
+    return list_guilds()
 
 def get_cft_resource(env, stack, resource):
     if env == "prod":

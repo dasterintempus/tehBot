@@ -1,7 +1,40 @@
 import os
 import uuid
-
+from typing import Optional, Iterable, Tuple
 from ..aws import client as awsclient, add_to_dynamo_item
+
+def get_guildid(guild_name:str) -> Optional[str]:
+    dynamo = awsclient("dynamodb")
+
+    filterexpr = "GuildName = :guildname AND SettingsKey = :settingskey"
+    filtervals = {
+        ":guildid": {"S": guild_name},
+        ":settingskey": {"S": "guild_status"}
+    }
+
+    response = dynamo.scan(
+        TableName=os.environ.get("DYNAMOTABLE_SETTINGS"),
+        FilterExpression=filterexpr,
+        ExpressionAttributeValues=filtervals
+    )
+    # try:
+    # except:
+    #     # print(f"Could not get settings for guild {guild_id} and key {key}")
+    #     raise
+    return response["Items"][0]["GuildId"]["S"]
+
+def list_guilds() -> Iterable[Tuple[str, str]]:
+    dynamo = awsclient("dynamodb")
+    filterexpr = "SettingsKey = :settingskey"
+    filtervals = {
+        ":settingskey": {"S": "guild_status"}
+    }
+    response = dynamo.scan(
+        TableName=os.environ.get("DYNAMOTABLE_SETTINGS"),
+        FilterExpression=filterexpr,
+        ExpressionAttributeValues=filtervals
+    )
+    return [(i["GuildName"]["S"], i["GuildId"]["S"]) for i in response["Items"]]
 
 def get_settings(guild_id, key):
     dynamo = awsclient("dynamodb")

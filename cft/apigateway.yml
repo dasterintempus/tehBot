@@ -77,16 +77,6 @@ Resources:
       AliasTarget:
         DNSName: !GetAtt ApiDomainName.RegionalDomainName
         HostedZoneId: !GetAtt ApiDomainName.RegionalHostedZoneId
-  
-
-  DiscordInteractionsLambdaPermission:
-    Type: AWS::Lambda::Permission
-    Properties:
-      Action: "lambda:InvokeFunction"
-      FunctionName: !ImportValue
-          'Fn::Sub': "tehBot-${EnvPrefix}WebhookLambdaArn"
-      Principal: apigateway.amazonaws.com
-
 
   ApiGatewayLoggingRole:
     Condition: Prod

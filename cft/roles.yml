@@ -323,6 +323,17 @@ Resources:
         - !Ref SteamLobbyTablePolicy
         - !Ref S3CacheBucketPolicy
         - !Ref ApiTablePolicy
+      Policies:
+        - PolicyDocument: 
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                 - "lambda:InvokeFunction"
+                Resource:
+                 - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:tehBot-${EnvPrefix}CronLambda"
+                 - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:tehBot-${EnvPrefix}CronLambda/*"
+          PolicyName: InvokeSelf
 
   WorkerLambdaRole:
     Type: AWS::IAM::Role

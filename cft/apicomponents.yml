@@ -12,29 +12,6 @@ Parameters:
     Type: String
 
 Resources:
-  CronLambdaTokenCleanupSchedule:
-    Type: AWS::Events::Rule
-    Properties:
-      Description: !Sub "ScheduleRule for token_cleanup (${EnvPrefix})"
-      ScheduleExpression: "rate(1 hour)"
-      State: "ENABLED"
-      Targets: 
-        - Arn: !ImportValue
-            'Fn::Sub': "tehBot-${EnvPrefix}CronLambdaArn"
-          Id: "token_cleanup"
-          Input: |
-            {
-              "op": "token_cleanup"
-            }
-  CronLambdaPerms:
-    Type: AWS::Lambda::Permission
-    Properties:
-      FunctionName: !ImportValue
-        'Fn::Sub': "tehBot-${EnvPrefix}CronLambdaArn"
-      Action: "lambda:InvokeFunction"
-      Principal: "events.amazonaws.com"
-      SourceArn: !GetAtt CronLambdaTokenCleanupSchedule.Arn
-
   AuthTokenPostLambdaStack:
     Type: AWS::CloudFormation::Stack
     Properties:

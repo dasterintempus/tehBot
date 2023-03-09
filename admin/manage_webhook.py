@@ -5,6 +5,7 @@ import adminutils
 
 if __name__ == "__main__":
     import sys
+    env = sys.argv[1]
     guild_name = sys.argv[2]
     webhook_name = sys.argv[3]
 
@@ -16,7 +17,7 @@ if __name__ == "__main__":
         body = json.load(f)
     
     app_id = secrets["application_id"]
-    guild_id = local["guilds"][guild_name]
+    guild_id = adminutils.get_env_guildid(env, guild_name)
     
     headers = {
         "Authorization": f"Bot {secrets['discord_bot_token']}"
