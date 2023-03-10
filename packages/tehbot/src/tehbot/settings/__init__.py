@@ -8,7 +8,7 @@ def get_guildid(guild_name:str) -> Optional[str]:
 
     filterexpr = "GuildName = :guildname AND SettingsKey = :settingskey"
     filtervals = {
-        ":guildid": {"S": guild_name},
+        ":guildname": {"S": guild_name},
         ":settingskey": {"S": "guild_status"}
     }
 
