@@ -50,12 +50,29 @@ def get_settings(guild_id, key):
         FilterExpression=filterexpr,
         ExpressionAttributeValues=filtervals
     )
-    try:
-        settings = response["Items"][0]
-    except:
-        print(f"Could not get settings for guild {guild_id} and key {key}")
-        raise
+    # try:
+    settings = response["Items"][0]
+    # except:
+    #     print(f"Could not get settings for guild {guild_id} and key {key}")
+    #     raise
     return settings
+
+def get_guild_reinvites(guildid):
+    dynamo = awsclient("dynamodb")
+
+    filterexpr = "GuildId = :guildid AND begins_with(SettingsKey, :settingsprefix)"
+    filtervals = {
+        ":guildid": {"S": guildid},
+        ":settingsprefix": {"S": "reinvite:"}
+    }
+
+    response = dynamo.scan(
+        TableName=os.environ.get("DYNAMOTABLE_SETTINGS"),
+        FilterExpression=filterexpr,
+        ExpressionAttributeValues=filtervals
+    )
+    
+    return response["Items"]
 
 def upsert_settings(guild_id, key, **kwargs):
     dynamo = awsclient("dynamodb")
@@ -113,3 +130,20 @@ def delete_settings(guild_id, key, *args):
         TableName=os.environ.get("DYNAMOTABLE_SETTINGS"),
         Item=item
     )
+
+def remove_settings_key(guild_id, key):
+    dynamo = awsclient("dynamodb")
+    filterexpr = "GuildId = :guildid AND SettingsKey = :settingskey"
+    filtervals = {
+        ":guildid": {"S": guild_id},
+        ":settingskey": {"S": key}
+    }
+
+    response = dynamo.scan(
+        TableName=os.environ.get("DYNAMOTABLE_SETTINGS"),
+        FilterExpression=filterexpr,
+        ExpressionAttributeValues=filtervals
+    )
+
+    item = response["Items"][0]
+    dynamo.delete_item(TableName=os.environ.get("DYNAMOTABLE_SETTINGS"), Key={"EntryId": item["EntryId"]})

@@ -82,7 +82,7 @@ Resources:
   CronLambdaScheduleLobby:
     Type: AWS::Events::Rule
     Properties:
-      Description: !Sub "ScheduleRule for (${EnvPrefix})"
+      Description: !Sub "ScheduleRule for lobby_update (${EnvPrefix})"
       ScheduleExpression: "rate(5 minutes)"
       State: "ENABLED"
       Targets: 
@@ -92,10 +92,19 @@ Resources:
             {
               "op": "lobby_update"
             }
-          # {
-          #   "op": "lobby_update",
-          #   "guildid": "${GuildId}"
-          # }
+  CronLambdaScheduleRoleScan:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: !Sub "ScheduleRule for role_scan (${EnvPrefix})"
+      ScheduleExpression: "rate(30 minutes)"
+      State: "ENABLED"
+      Targets: 
+        - Arn: !GetAtt [CronLambda, Arn]
+          Id: !Sub "Cron-Schedule-${EnvPrefix}"
+          Input: |
+            {
+              "op": "role_scan"
+            }
   CronLambdaLobbyPerms:
     Type: AWS::Lambda::Permission
     Properties:
@@ -103,6 +112,13 @@ Resources:
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: !GetAtt CronLambdaScheduleLobby.Arn
+  CronLambdaRoleScanPerms:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt [CronLambda, Arn]
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt CronLambdaScheduleRoleScan.Arn
   CronLambdaSelfPerms:
     Type: AWS::Lambda::Permission
     Properties:

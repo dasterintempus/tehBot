@@ -1,8 +1,8 @@
 import datetime
-from tehbot.settings import get_settings, upsert_settings, list_guilds
+from tehbot.discord import api as discordapi
+from tehbot.settings import get_settings, upsert_settings, list_guilds, get_guild_reinvites
 from tehbot.steam.lobbies import Lobby, LobbyKey
 from tehbot.steam.lobbies.players import Player
-from tehbot.aws import client as awsclient
 from steam.utils.throttle import ConstantRateLimit
 import os
 import json
@@ -42,6 +42,20 @@ def token_cleanup():
     for token in tokens:
         token.drop()
 
+def role_scan(guildid):
+    reinvites = get_guild_reinvites(guildid)
+    
+    for item in reinvites:
+        user_id = item["SettingsKey"]["S"].split(":", 1)[0]
+        url = f"guilds/{guildid}/members/{user_id}"
+        r = discordapi.get(url)
+        memberobj = r.json()
+        roleids = set()
+        for roleid in memberobj["roles"]:
+            roleids.add(roleid)
+        upsert_settings(guildid, item["SettingsKey"]["S"], RoleIds=roleids)
+        
+
 def lambda_handler(event, context):
     secrets_arn = os.environ.get("SECRETS_ARN")
     secrets = awsclient("secretsmanager")
@@ -55,6 +69,15 @@ def lambda_handler(event, context):
         if "guildid" in event:
             guildid = event["guildid"]
             lobby_update(guildid)
+        else:
+            guilds = list_guilds()
+            lam = awsclient("lambda")
+            for guildname, guildid in guilds:
+                lam.invoke(FunctionName=context.invoked_function_arn, InvocationType="Event", Payload=json.dumps({"op": op, "guildid": guildid}).encode())
+    elif op == "role_scan":
+        if "guildid" in event:
+            guildid = event["guildid"]
+            role_scan(guildid)
         else:
             guilds = list_guilds()
             lam = awsclient("lambda")

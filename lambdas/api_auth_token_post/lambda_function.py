@@ -58,7 +58,15 @@ def lambda_handler(event, context):
     if len(guild_ids) == 0:
         return make_response(403, {"error": {"code": "NoGuilds", "msg": "No accepted guilds found for this user."}})
     
+    
+    identity_r = oauth_discord_client.get("users/@me").json()
+    user_id = identity_r["id"]
+    user_display_name = identity_r["username"]+"#"+identity_r["discriminator"]
+
+    reinvite_settings_key = f"reinvite:{user_id}"
+
     auth_guild_ids = []
+    reinvite_guild_ids = []
     for guild_id in guild_ids:
         guild_roles_r = discordapi.get(f"guilds/{guild_id}/roles").json()
         guild_admin_settings = get_settings(guild_id, "admin_settings")
@@ -72,16 +80,20 @@ def lambda_handler(event, context):
 
         user_admin_role_ids = [role for role in user_role_ids if role in guild_admin_role_ids]
         if len(user_admin_role_ids) > 0:
-            auth_guild_ids.append(guild_id)
+            auth_guild_ids.append(guild_id)    
+        
+        try:
+            get_settings(guild_id, reinvite_settings_key)
+        except:
+            pass
+        else:
+            reinvite_guild_ids.append(guild_id)
 
+    
     if len(auth_guild_ids) == 0:
         return make_response(403, {"error": {"code": "NoRoles", "msg": "No accepted roles found for accepted guilds for this user."}})
 
-    identity_r = oauth_discord_client.get("users/@me").json()
-    user_id = identity_r["id"]
-    user_display_name = identity_r["username"]+"#"+identity_r["discriminator"]
-
-    token = Token(user_id, user_display_name, auth_guild_ids)
+    token = Token(user_id, user_display_name, set(auth_guild_ids), set(reinvite_guild_ids))
     token.save()
 
     response_body = {}
@@ -89,5 +101,6 @@ def lambda_handler(event, context):
     response_body["user_display_name"] = user_display_name
     response_body["user_avatar"] = identity_r["avatar"]
     response_body["guilds"] = {guild["id"] : {"name": guild["name"], "id": guild["id"], "icon": guild["icon"]} for guild in guilds_r if guild["id"] in auth_guild_ids}
+    response_body["reinvite_guilds"] = {guild["id"] : {"name": guild["name"], "id": guild["id"], "icon": guild["icon"]} for guild in guilds_r if guild["id"] in reinvite_guild_ids}
 
     return make_response(200, response_body)

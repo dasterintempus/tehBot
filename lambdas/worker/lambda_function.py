@@ -11,7 +11,7 @@ from cmds import lobby_admin, lobby_optin, lobby_optout, lobby_preferences, lobb
 from cmds import quote_search, quote_suggest
 from cmds import quotemod_add, quotemod_delete, quotemod_print, quotemod_list, quotemod_modify_tags
 from cmds import quotemod_alias_add, quotemod_alias_delete, quotemod_alias_print, quotemod_alias_list, quotemod_alias_modify_values
-# from cmds import generate_tierlist
+from cmds import reinvite_allow, reinvite_disallow
 from cmds import meta_maintenance_start, meta_maintenance_end
 
 # def say_cmd(body):
@@ -95,6 +95,13 @@ def quotemod_alias_cmd(body):
     elif subcmd == "modify_values":
         return quotemod_alias_modify_values(body)
 
+def reinvite_cmd(body):
+    subcmd = body["data"]["options"][0]["name"]
+    if subcmd == "allow":
+        return reinvite_allow(body)
+    elif subcmd == "disallow":
+        return reinvite_disallow(body)
+
 def meta_record(body):
     subcmd = body["_meta"]
     if subcmd == "maintenance-start":
@@ -126,6 +133,8 @@ def handle_record(body):
         response = quote_suggest(body)
     elif body["data"]["name"] == "quotemod":
         response = quotemod_cmd(body)
+    elif body["data"]["name"] == "reinvite":
+        response = reinvite_cmd(body)
     # elif body["data"]["name"] == "tierlist":
     #     response = tierlist_cmd(body)
     else:

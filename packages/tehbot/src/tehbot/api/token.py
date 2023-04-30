@@ -74,18 +74,20 @@ class Token:
         token = Token(
             item["DiscordUserId"]["S"],
             item["DiscordUserDisplayName"]["S"],
-            extract_dynamo_value(item["AuthGuildIds"])
+            extract_dynamo_value(item["AuthGuildIds"]),
+            extract_dynamo_value(item["ReinviteGuildIds"])
         )
         token.entryid = item["EntryId"]["S"]
         token.issued = datetime.datetime.utcfromtimestamp(int(item["IssuedEpoch"]["N"]))
         return token
 
-    def __init__(self:"Token", user_id:str, user_display_name:str, auth_guild_ids:Set[str]) -> None:
+    def __init__(self:"Token", user_id:str, user_display_name:str, auth_guild_ids:Set[str], reinvite_guild_ids:Set[str]) -> None:
         self.entryid = str(uuid.uuid4())
         self.user_id = user_id
         self.user_display_name = user_display_name
         self.issued = datetime.datetime.utcnow()
         self.auth_guild_ids = auth_guild_ids
+        self.reinvite_guild_ids = reinvite_guild_ids
     
     def __str__(self):
         return self.entryid + "|" + str(int(self.issued.timestamp()))
@@ -104,6 +106,7 @@ class Token:
             "DiscordUserId": {"S": self.user_id},
             "DiscordUserDisplayName": {"S": self.user_display_name},
             "AuthGuildIds": build_dynamo_value(self.auth_guild_ids),
+            "ReinviteGuildIds": build_dynamo_value(self.reinvite_guild_ids),
             "IssuedEpoch": {"N": str(int(self.issued.timestamp()))}
         }
         

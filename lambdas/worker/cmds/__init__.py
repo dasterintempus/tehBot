@@ -5,5 +5,6 @@
 from .lobby_admin import *
 from .lobby_user import *
 from .quote import *
+from .reinvite import *
 # from .tierlist import *
 from .meta_maintenance import *

@@ -1,0 +1,34 @@
+{
+    "name": "reinvite",
+    "type": 1,
+    "description": "Reinvite access via the bot.",
+    "default_member_permissions": "1",
+    "options": [
+        {
+            "name": "allow",
+            "description": "Allow a user to re-invite themselves via the bot",
+            "type": 1,
+            "options": [
+                {
+                    "name": "user",
+                    "description": "The user to allow.",
+                    "type": 6,
+                    "required": true
+                }
+            ]
+        },
+        {
+            "name": "disallow",
+            "description": "Disallow a user to re-invite themselves via the bot",
+            "type": 1,
+            "options": [
+                {
+                    "name": "user",
+                    "description": "The user to disallow.",
+                    "type": 6,
+                    "required": true
+                }
+            ]
+        }
+    ]
+}
