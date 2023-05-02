@@ -3,7 +3,7 @@ import os
 import uuid
 import json
 
-from typing import Set
+from typing import Set, Dict
 import datetime
 
 DYNAMOTABLE_API = os.environ.get("DYNAMOTABLE_API")
@@ -48,7 +48,7 @@ class Token:
     @staticmethod
     def find_by_discord_userid(userid):
         dynamo = awsclient("dynamodb")
-        filterexpr = "attribute_exists(AuthGuildIds) and attribute_exists(IssuedEpoch) and DiscordUserId = :userid"
+        filterexpr = "attribute_exists(GuildPerms) and attribute_exists(IssuedEpoch) and DiscordUserId = :userid"
         filtervals = {
             ":userid": {"S": userid}
         }
@@ -62,7 +62,7 @@ class Token:
     @staticmethod
     def find_all():
         dynamo = awsclient("dynamodb")
-        filterexpr = "attribute_exists(AuthGuildIds) and attribute_exists(IssuedEpoch)"
+        filterexpr = "attribute_exists(GuildPerms) and attribute_exists(IssuedEpoch)"
         response = dynamo.scan(
             TableName=DYNAMOTABLE_API,
             FilterExpression=filterexpr
@@ -74,21 +74,19 @@ class Token:
         token = Token(
             item["DiscordUserId"]["S"],
             item["DiscordUserDisplayName"]["S"],
-            extract_dynamo_value(item["AuthGuildIds"]),
-            extract_dynamo_value(item["ReinviteGuildIds"])
+            extract_dynamo_value(item["GuildPerms"])
         )
         token.entryid = item["EntryId"]["S"]
         token.issued = datetime.datetime.utcfromtimestamp(int(item["IssuedEpoch"]["N"]))
         return token
 
-    def __init__(self:"Token", user_id:str, user_display_name:str, auth_guild_ids:Set[str], reinvite_guild_ids:Set[str]) -> None:
+    def __init__(self:"Token", user_id:str, user_display_name:str, guild_perms:Dict[str, Set[str]]) -> None:
         self.entryid = str(uuid.uuid4())
         self.user_id = user_id
         self.user_display_name = user_display_name
         self.issued = datetime.datetime.utcnow()
-        self.auth_guild_ids = auth_guild_ids
-        self.reinvite_guild_ids = reinvite_guild_ids
-    
+        self.guild_perms = guild_perms
+
     def __str__(self):
         return self.entryid + "|" + str(int(self.issued.timestamp()))
 
@@ -96,7 +94,15 @@ class Token:
         now = datetime.datetime.utcnow()
         if (now - self.issued) > datetime.timedelta(seconds=3600):
             return "expired"
-        if guild_id not in self.auth_guild_ids:
+        if guild_id not in self.guild_perms:
+            return "unauthorized"
+        return "valid"
+
+    def has_perm_for_guild_id(self, guild_id, permission):
+        now = datetime.datetime.utcnow()
+        if (now - self.issued) > datetime.timedelta(seconds=3600):
+            return "expired"
+        if guild_id not in self.guild_perms or permission not in self.guild_perms[guild_id]:
             return "unauthorized"
         return "valid"
 
@@ -105,8 +111,7 @@ class Token:
             "EntryId": {"S": self.entryid},
             "DiscordUserId": {"S": self.user_id},
             "DiscordUserDisplayName": {"S": self.user_display_name},
-            "AuthGuildIds": build_dynamo_value(self.auth_guild_ids),
-            "ReinviteGuildIds": build_dynamo_value(self.reinvite_guild_ids),
+            "GuildPerms": build_dynamo_value(self.guild_perms),
             "IssuedEpoch": {"N": str(int(self.issued.timestamp()))}
         }
         

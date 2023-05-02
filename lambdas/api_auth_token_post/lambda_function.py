@@ -10,6 +10,7 @@ from tehbot.api import make_response
 from tehbot.api.token import Token
 import base64
 import traceback
+import collections
 
 import logging
 from http.client import HTTPConnection # py3
@@ -65,42 +66,46 @@ def lambda_handler(event, context):
 
     reinvite_settings_key = f"reinvite:{user_id}"
 
-    auth_guild_ids = []
-    reinvite_guild_ids = []
+    guild_perms = collections.defaultdict(lambda: set())
     for guild_id in guild_ids:
         guild_roles_r = discordapi.get(f"guilds/{guild_id}/roles").json()
         guild_admin_settings = get_settings(guild_id, "admin_settings")
-        approved_roles = []
-        approved_roles.extend([role_name.lower() for role_name in guild_admin_settings["admin_roles"]["S"].split(",")])
-        approved_roles.extend([role_name.lower() for role_name in guild_admin_settings["quotemod_roles"]["S"].split(",")])
-        guild_admin_role_ids = [role["id"] for role in guild_roles_r if role["name"].lower() in approved_roles]
+        admin_roles = []
+        admin_roles.extend([role_name.lower() for role_name in guild_admin_settings["admin_roles"]["S"].split(",")])
+        guild_admin_role_ids = [role["id"] for role in guild_roles_r if role["name"].lower() in admin_roles]
+        quotemod_roles = []
+        quotemod_roles.extend([role_name.lower() for role_name in guild_admin_settings["quotemod_roles"]["S"].split(",")])
+        guild_quotemod_role_ids = [role["id"] for role in guild_roles_r if role["name"].lower() in quotemod_roles]
 
         guild_member_r = oauth_discord_client.get(f"users/@me/guilds/{guild_id}/member").json()
         user_role_ids = guild_member_r["roles"]
 
         user_admin_role_ids = [role for role in user_role_ids if role in guild_admin_role_ids]
         if len(user_admin_role_ids) > 0:
-            auth_guild_ids.append(guild_id)    
+            guild_perms[guild_id].add("admin")
+        user_quotemod_role_ids = [role for role in user_role_ids if role in guild_quotemod_role_ids]
+        if len(user_quotemod_role_ids) > 0:
+            guild_perms[guild_id].add("quotemod")
         
         try:
             get_settings(guild_id, reinvite_settings_key)
         except:
             pass
         else:
-            reinvite_guild_ids.append(guild_id)
+            guild_perms[guild_id].add("reinvite")
 
     
-    if len(auth_guild_ids) == 0:
+    if len(guild_perms) == 0:
         return make_response(403, {"error": {"code": "NoRoles", "msg": "No accepted roles found for accepted guilds for this user."}})
 
-    token = Token(user_id, user_display_name, set(auth_guild_ids), set(reinvite_guild_ids))
+    token = Token(user_id, user_display_name, guild_perms)
     token.save()
 
     response_body = {}
     response_body["token"] = str(token)
     response_body["user_display_name"] = user_display_name
     response_body["user_avatar"] = identity_r["avatar"]
-    response_body["guilds"] = {guild["id"] : {"name": guild["name"], "id": guild["id"], "icon": guild["icon"]} for guild in guilds_r if guild["id"] in auth_guild_ids}
-    response_body["reinvite_guilds"] = {guild["id"] : {"name": guild["name"], "id": guild["id"], "icon": guild["icon"]} for guild in guilds_r if guild["id"] in reinvite_guild_ids}
+    response_body["guilds"] = {guild["id"] : {"name": guild["name"], "id": guild["id"], "icon": guild["icon"], "perms": list(guild_perms[guild["id"]])} for guild in guilds_r if guild["id"] in guild_perms}
+    # response_body["reinvite_guilds"] = {guild["id"] : {"name": guild["name"], "id": guild["id"], "icon": guild["icon"]} for guild in guilds_r if guild["id"] in reinvite_guild_ids}
 
     return make_response(200, response_body)

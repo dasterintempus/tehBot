@@ -6,8 +6,7 @@ from tehbot.aws import client as awsclient
 from tehbot.settings import get_settings
 from tehbot.discord import build_oauth_client, api as discordapi
 from tehbot.util import CONTEXT
-from tehbot.api import make_response, get_json_body
-from tehbot.api.token import Token
+from tehbot.api import make_response, get_json_body, has_permission, make_forbidden_response
 from tehbot.quotes import Quote
 import pprint
 
@@ -31,6 +30,8 @@ def lambda_handler(event, context):
 
     guild_id = event["pathParameters"]["guild_id"]
     
+    if not has_permission(event, guild_id, "quotemod"):
+        return make_forbidden_response()
     # ok, response_body = check_token_validity(event, guild_id)
     # if not ok:
     #     return response_body

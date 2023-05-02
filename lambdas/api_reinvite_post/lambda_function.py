@@ -1,12 +1,13 @@
+from urllib import request
 from tehbot.settings import get_settings
 import re
 import os
 from tehbot.aws import client as awsclient
-from tehbot.settings import get_settings
 from tehbot.discord import build_oauth_client, api as discordapi
 from tehbot.util import CONTEXT
 from tehbot.api import make_response, has_permission, make_forbidden_response
 from tehbot.quotes import Quote
+import requests
 import pprint
 
 import json
@@ -29,31 +30,20 @@ def lambda_handler(event, context):
 
     guild_id = event["pathParameters"]["guild_id"]
     
-    if not has_permission(event, guild_id, "quotemod"):
+    if not has_permission(event, guild_id, "reinvite"):
         return make_forbidden_response()
     # ok, response_body = check_token_validity(event, guild_id)
     # if not ok:
     #     return response_body
-
-    # body_str = event.get("body")
-    # if body_str is None:
-    #     body_str = "{}"
-    # try:
-    #     request_body = json.loads(body_str)
-    # except:
-    #     return make_response(400, {"error": {"code": "InvalidJson", "msg": "Request body was not valid JSON."}})
-    # terms = request_body.get("terms", [])
-    # offset = request_body.get("offset", 0)
-    # count = request_body.get("count", 100)
-    # if count > 100:
-    #     return make_response(400, {"error": {"code": "InvalidRequestParameter", "msg": "'count' has a maximum value of 100"}})
     
-    # if len(terms) > 0:
-    #     quote_list = Quote.search(terms, guild_id)
-    # else:
-    #     quote_list = Quote.find_all(guild_id)
-    quote_list = Quote.find_all(guild_id)
-    quote_list.sort(key=lambda q: q.name)
-    response_body = {"total_hits": len(quote_list), "quotes": [quote.to_dict() for quote in quote_list]}
+    guild_info_r = discordapi.get(f"guilds/{guild_id}")
+    guild_info_r.raise_for_status()
+    channel_id = guild_info_r.json()["system_channel_id"]
+    
+    invite_r = discordapi.post(f"channels/{channel_id}/invites", json={"max_age": 60*60*24, "max_uses":1, "unique":True})
+    invite_r.raise_for_status()
+    invite_code = invite_r.json()["code"]
+
+    response_body = {"success": True, "link": f"https://discord.gg/{invite_code}"}
 
     return make_response(200, response_body)

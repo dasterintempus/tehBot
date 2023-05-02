@@ -296,6 +296,51 @@ paths:
         type: "aws_proxy"
       security:
         - token_auth: []
+  /guilds/{guild_id}/reinvite:
+    post:
+      parameters:
+        - name: guild_id
+          in: path
+          description: Guild ID
+          required: true
+          schema:
+            type: string
+      tags:
+        - reinvite
+      summary: generate reinvite
+      description: Generate a reinvite link for this guild
+      operationId: generateReinvite
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  link:
+                    type: string
+        '400':
+          description: Payload Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        '403':
+          $ref: "#/components/responses/Forbidden"
+      x-amazon-apigateway-integration:
+        uri: "{{lambda_reinvite_post}}"
+        httpMethod: "POST"
+        passthroughBehavior: "when_no_templates"
+        payloadFormatVersion: 2.0
+        type: "aws_proxy"
+      security:
+        - token_auth: []
   /auth/token:
     post:
       tags:

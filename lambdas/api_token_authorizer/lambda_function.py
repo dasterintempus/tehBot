@@ -54,12 +54,32 @@ def lambda_handler(event, context):
                     "user_display_name": token.user_display_name
                 }
             }
-    logger.debug("Token ok!")
-    return {
-        "isAuthorized": True,
-        "context": {
-            "tokenval": tokenval,
-            "user_id": token.user_id,
-            "user_display_name": token.user_display_name
+        logger.debug("Token ok!")
+        return {
+            "isAuthorized": True,
+            "context": {
+                "tokenval": tokenval,
+                "user_id": token.user_id,
+                "user_display_name": token.user_display_name,
+                "guild_perms": {guild_id: list(perms) for guild_id, perms in token.guild_perms.items()}
+            }
         }
-    }
+    else:
+        logger.error("Request does not include Guild ID...")
+        return {
+            "isAuthorized": False,
+            "context": {
+                "tokenval": tokenval,
+                "user_id": token.user_id,
+                "user_display_name": token.user_display_name
+            }
+        }
+    # logger.debug("Token ok!")
+    # return {
+    #     "isAuthorized": True,
+    #     "context": {
+    #         "tokenval": tokenval,
+    #         "user_id": token.user_id,
+    #         "user_display_name": token.user_display_name
+    #     }
+    # }

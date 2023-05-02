@@ -25,6 +25,21 @@ def get_json_body(event):
         return json.loads(base64.b64decode(event["body"]))
     return json.loads(event["body"])
 
+def has_permission(event, guild_id, permission):
+    try:
+        if "admin" in event["requestContext"]["authorizer"]["lambda"]["guild_perms"][guild_id]:
+            return True
+    except KeyError:
+        pass
+    # print(permission, event["requestContext"]["authorizer"]["lambda"]["guild_perms"][guild_id])
+    try:
+        return permission in event["requestContext"]["authorizer"]["lambda"]["guild_perms"][guild_id]
+    except KeyError:
+        return False
+
+def make_forbidden_response():
+    return make_response(403, {"error": {"code": "UnauthorizedToken", "msg": "Authentication token does not include authorization for the requested operation on the requested guild id."}})
+
 # def check_token_validity(event, guild_id):
 #     tokenval = event["headers"].get("x-teh-auth", None)
 #     if tokenval is None:

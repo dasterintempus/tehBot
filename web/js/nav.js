@@ -43,6 +43,9 @@ function do_page_nav() {
         else if (nav == "quotes") {
             _apply_page_nav(render_guild_quotes_nav);
         }
+        else if (nav == "reinvite") {
+            _apply_page_nav(render_guild_reinvite_nav);
+        }
     }
 }
 
@@ -88,18 +91,36 @@ function render_guild_nav_breadcrumbs() {
 function render_guild_nav() {
     let guild_id = fragment_params["guild_id"];
     let button_row_div = document.createElement("div");
-    let quotes_button = document.createElement("button");
-    quotes_button.className = "btn btn-primary";
-    quotes_button.textContent = "Manage Quotes";
-    button_row_div.append(quotes_button);
-    quotes_button.addEventListener("click", () => {
-        for (child of button_row_div.children) {
-            child.setAttribute("disabled", "");
-        }
-        location.hash = encodeURIComponent(`guild_id=${guild_id}&nav=quotes`);
-        do_page_nav();
-        // let quote_row_div = render_guild_quotes(guild_id);
-        // content_div.append(quote_row_div);
-    });
+    let creds = JSON.parse(sessionStorage.getItem("tehbot_creds"));
+    if (creds["guild_perms"][guild_id].includes("admin") || creds["guild_perms"][guild_id].includes("quotemod")) {
+        let button = document.createElement("button");
+        button.className = "btn btn-primary";
+        button.textContent = "Manage Quotes";
+        button_row_div.append(button);
+        button.addEventListener("click", () => {
+            for (child of button_row_div.children) {
+                child.setAttribute("disabled", "");
+            }
+            location.hash = encodeURIComponent(`guild_id=${guild_id}&nav=quotes`);
+            do_page_nav();
+            // let quote_row_div = render_guild_quotes(guild_id);
+            // content_div.append(quote_row_div);
+        });
+    }
+    if (creds["guild_perms"][guild_id].includes("admin") || creds["guild_perms"][guild_id].includes("reinvite")) {
+        let button = document.createElement("button");
+        button.className = "btn btn-primary";
+        button.textContent = "Generate Invite Link";
+        button_row_div.append(button);
+        button.addEventListener("click", () => {
+            for (child of button_row_div.children) {
+                child.setAttribute("disabled", "");
+            }
+            location.hash = encodeURIComponent(`guild_id=${guild_id}&nav=reinvite`);
+            do_page_nav();
+            // let quote_row_div = render_guild_quotes(guild_id);
+            // content_div.append(quote_row_div);
+        });
+    }
     return {"content": [button_row_div], "breadcrumbs": render_guild_nav_breadcrumbs()};
 }
