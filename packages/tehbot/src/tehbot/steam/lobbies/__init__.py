@@ -16,8 +16,11 @@ import pprint
 import logging
 logger = logging.getLogger(__name__)
 
+from typing import List
+
 STEAM_API_KEY = os.environ.get("STEAM_API_KEY")
 DYNAMOTABLE_STEAM_LOBBY = os.environ.get("DYNAMOTABLE_STEAM_LOBBY")
+API_URL = os.environ.get("API_URL")
 
 LobbyKey = namedtuple("LobbyKey", ["appid", "lobbyid"])
 
@@ -175,6 +178,25 @@ class Lobby:
             return Lobby.from_item(item)
 
     @staticmethod
+    def from_entryid(entryid, guildid):
+        dynamo = awsclient("dynamodb")
+        filterexpr = "EntryId = :entryid AND GuildId = :guildid AND attribute_exists(AppId)"
+        filtervals = {
+            ":entryid": {"S": entryid},
+            ":guildid": {"S": guildid}
+        }
+        response = dynamo.scan(
+            TableName=DYNAMOTABLE_STEAM_LOBBY,
+            FilterExpression=filterexpr,
+            ExpressionAttributeValues=filtervals
+        )
+        if len(response["Items"]) == 0:
+            return None
+        else:
+            item = response["Items"][0]
+            return Lobby.from_item(item)
+
+    @staticmethod
     def from_item(item):
         lobby = Lobby(
             item["AppId"]["S"],
@@ -283,10 +305,13 @@ class Lobby:
             r.raise_for_status()
         self.save()
     
-    def render_url(self, player):
+    def render_steam_url(self, player: "Player"):
         return f"steam://joinlobby/{self.appid}/{self.lobbyid}/{player.steamid.as_64}"
 
-    def render_status_message(self, lobby_players):
+    def render_redirect_url(self, player: "Player"):
+        return f"https://{API_URL}/guilds/{self.guildid}/steam/lobby/{self.entryid}/player/{player.entryid}/redirect"
+
+    def render_status_message(self, lobby_players: List["Player"]):
         try:
             r = requests.get(f"https://store.steampowered.com/app/{self.appid}")
             soup = BeautifulSoup(r.text, "html.parser")
@@ -308,8 +333,9 @@ class Lobby:
             username = CONTEXT["cache"]["members"][self.guildid][player.discord_id]["nick"]
             if username is None:
                 username = CONTEXT["cache"]["members"][self.guildid][player.discord_id]["user"]["username"]
-            url = self.render_url(player)
-            text = text + f"\n\t{username}: {url}"
+            redirect_url = self.render_redirect_url(player)
+            steam_url = self.render_steam_url(player)
+            text = text + f"\n\t{username}: {steam_url} ({redirect_url})"
         text = text + f"\n\n*{datetime.now().isoformat()}*"
         return {
             "embeds": [

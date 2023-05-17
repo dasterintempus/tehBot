@@ -57,6 +57,57 @@ paths:
         passthroughBehavior: "when_no_templates"
         payloadFormatVersion: 2.0
         type: "aws_proxy"
+  /guilds/{guild_id}/steam/lobby/{lobby_uuid}/player/{player_uuid}/redirect:
+    get:
+      parameters:
+        - name: guild_id
+          in: path
+          description: Guild ID
+          required: true
+          schema:
+            type: string
+        - name: lobby_uuid
+          in: path
+          description: Lobby UUID
+          required: true
+          schema:
+            type: string
+        - name: player_uuid
+          in: path
+          description: Player UUID
+          required: true
+          schema:
+            type: string
+      tags:
+        - steam
+      summary: Redirect to a Steam lobby player join-on URL
+      description: Generate an HTTP redirect to a Steam Lobby URL to join on a specific player
+      operationId: redirectSteamLobbyJoin
+      responses:
+        '308':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Payload Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                type: object
+      x-amazon-apigateway-integration:
+        uri: "{{lambda_steam_lobby_redirect}}"
+        httpMethod: "POST"
+        passthroughBehavior: "when_no_templates"
+        payloadFormatVersion: 2.0
+        type: "aws_proxy"
   /guilds/{guild_id}/quotes:
     get:
       parameters:

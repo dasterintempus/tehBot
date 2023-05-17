@@ -59,6 +59,10 @@ Resources:
             - Nonprod
             - !Sub "https://dev-teh.${HostedZoneName}"
             - !Sub "https://teh.${HostedZoneName}"
+          API_URL: !If
+            - Nonprod
+            - !Sub "${EnvPrefix}-api.${HostedZoneName}"
+            - !Sub api.${HostedZoneName}
   LambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:

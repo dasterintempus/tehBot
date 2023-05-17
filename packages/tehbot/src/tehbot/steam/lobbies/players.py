@@ -100,6 +100,25 @@ class Player:
             return Player.from_item(item)
 
     @staticmethod
+    def from_entryid(entryid, guildid):
+        dynamo = awsclient("dynamodb")
+        filterexpr = "EntryId = :entryid AND GuildId = :guildid AND attribute_exists(SteamID)"
+        filtervals = {
+            ":entryid": {"S": entryid},
+            ":guildid": {"S": guildid}
+        }
+        response = dynamo.scan(
+            TableName=DYNAMOTABLE_STEAM_LOBBY,
+            FilterExpression=filterexpr,
+            ExpressionAttributeValues=filtervals
+        )
+        if len(response["Items"]) == 0:
+            return None
+        else:
+            item = response["Items"][0]
+            return Player.from_item(item)
+
+    @staticmethod
     def from_item(item):
         user = Player(
             item["DiscordId"]["S"],

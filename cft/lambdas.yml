@@ -14,6 +14,12 @@ Parameters:
     Type: String
   RootDiscordUserId:
     Type: String
+  HostedZoneName:
+    Type: String
+
+Conditions:
+  Nonprod: !Not [ !Equals [ !Ref EnvPrefix, "" ] ]
+
 Resources:
   WebhookLambda:
     Type: AWS::Lambda::Function
@@ -79,6 +85,10 @@ Resources:
             'Fn::Sub': "tehBot-${EnvPrefix}SettingsTable"
           DYNAMOTABLE_API: !ImportValue
             'Fn::Sub': "tehBot-${EnvPrefix}ApiTable"
+          API_URL: !If
+            - Nonprod
+            - !Sub "${EnvPrefix}-api.${HostedZoneName}"
+            - !Sub api.${HostedZoneName}
   CronLambdaScheduleLobby:
     Type: AWS::Events::Rule
     Properties:
@@ -166,6 +176,10 @@ Resources:
           SECRETS_ARN: !ImportValue
             'Fn::Sub': "tehBot-${EnvPrefix}LambdaSecretsArn"
           ROOT_DISCORD_USER_ID: !Ref RootDiscordUserId
+          API_URL: !If
+            - Nonprod
+            - !Sub "${EnvPrefix}-api.${HostedZoneName}"
+            - !Sub api.${HostedZoneName}
   WorkerPermission:
     Type: AWS::Lambda::Permission
     Properties:

@@ -1,3 +1,4 @@
 # Pillow
 steam[client]
 beautifulsoup4
+urllib3<2

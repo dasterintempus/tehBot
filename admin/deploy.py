@@ -322,6 +322,7 @@ def stack_lambdas(ctx):
         params["HeavyWorkerDockerImageUri"] = f"{ctx['local']['heavyworker_ecrimage_uri']}:{lambda_version}"
         params["CronVersion"] = lambda_version
         params["RootDiscordUserId"] = ctx["local"]["root_discord_user_id"]
+        params["HostedZoneName"] = ctx["local"]["domain"]
         stackname = f"tehBot-{ctx['args'].env}Lambdas"
         upsert_stack(ctx, stackname, "../cft/lambdas.yml", params)
 

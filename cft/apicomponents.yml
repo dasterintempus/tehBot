@@ -46,6 +46,23 @@ Resources:
     UpdateReplacePolicy: Delete
     DeletionPolicy: Delete
 
+  SteamLobbyRedirectLambdaStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub
+        - "https://s3.amazonaws.com/${LambdaBucket}/apilambda_cft_${LambdaVersion}.yml"
+        - LambdaBucket: !ImportValue
+            'Fn::Sub': "tehBot-${EnvPrefix}LambdaBucket"
+          LambdaVersion: !Ref LambdaVersion
+      Parameters:
+        EnvPrefix: !Ref EnvPrefix
+        Version: !Ref LambdaVersion
+        Name: steam_lobby_redirect
+        RootDiscordUserId: !Ref RootDiscordUserId
+        HostedZoneName: !Ref HostedZoneName
+    UpdateReplacePolicy: Delete
+    DeletionPolicy: Delete
+
   QuotesGetLambdaStack:
     Type: AWS::CloudFormation::Stack
     Properties:
