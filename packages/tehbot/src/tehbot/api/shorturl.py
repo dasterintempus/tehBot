@@ -2,18 +2,19 @@ from ..aws import build_dynamo_value, client as awsclient, extract_dynamo_value
 import os
 import uuid
 import json
-
+import hashlib
 from typing import Set
 import datetime
 
 DYNAMOTABLE_API = os.environ.get("DYNAMOTABLE_API")
+API_URL = os.environ.get("API_URL")
 
-class Token:
+class ShortUrl:
     @staticmethod
     def find_issued_before(datetime : datetime.datetime):
         dynamo = awsclient("dynamodb")
         epoch = str(int(datetime.timestamp()))
-        filterexpr = "IssuedEpoch < :epoch and attribute_exists(AuthGuildIds)"
+        filterexpr = "IssuedEpoch < :epoch and attribute_exists(TargetUrl)"
         filtervals = {
             ":epoch": {"N": epoch}
         }
@@ -22,17 +23,14 @@ class Token:
             FilterExpression=filterexpr,
             ExpressionAttributeValues=filtervals
         )
-        return [Token.from_item(item) for item in response["Items"]]
-    
+        return [ShortUrl.from_item(item) for item in response["Items"]]
+
     @staticmethod
-    def from_token_value(tokenvalue):
-        tokenuuid = tokenvalue.split("|")[0]
-        tokenepoch = str(int(tokenvalue.split("|")[1]))
+    def from_shortstr(shortstr):
         dynamo = awsclient("dynamodb")
-        filterexpr = "IssuedEpoch = :tokenepoch and EntryId = :tokenuuid and attribute_exists(AuthGuildIds)"
+        filterexpr = "ShortStr = :shortstr and attribute_exists(TargetUrl)"
         filtervals = {
-            ":tokenepoch": {"N": tokenepoch},
-            ":tokenuuid": {"S": tokenuuid}
+            ":shortstr": {"S": shortstr}
         }
         response = dynamo.scan(
             TableName=DYNAMOTABLE_API,
@@ -43,67 +41,88 @@ class Token:
             return None
         else:
             item = response["Items"][0]
-            return Token.from_item(item)
-
+            return ShortUrl.from_item(item)
+    
     @staticmethod
-    def find_by_discord_userid(userid):
+    def from_target_url(target_url):
         dynamo = awsclient("dynamodb")
-        filterexpr = "attribute_exists(AuthGuildIds) and attribute_exists(IssuedEpoch) and DiscordUserId = :userid"
+        filterexpr = "TargetUrl = :target_url"
         filtervals = {
-            ":userid": {"S": userid}
+            ":target_url": {"S": target_url}
         }
         response = dynamo.scan(
             TableName=DYNAMOTABLE_API,
             FilterExpression=filterexpr,
             ExpressionAttributeValues=filtervals
         )
-        return [Token.from_item(item) for item in response["Items"]]
+        if len(response["Items"]) == 0:
+            return None
+        else:
+            item = response["Items"][0]
+            return ShortUrl.from_item(item)
+
+    @staticmethod
+    def from_entryid(entryid):
+        dynamo = awsclient("dynamodb")
+        filterexpr = "EntryId = :entryid and attribute_exists(TargetUrl)"
+        filtervals = {
+            ":entryid": {"S": entryid}
+        }
+        response = dynamo.scan(
+            TableName=DYNAMOTABLE_API,
+            FilterExpression=filterexpr,
+            ExpressionAttributeValues=filtervals
+        )
+        if len(response["Items"]) == 0:
+            return None
+        else:
+            item = response["Items"][0]
+            return ShortUrl.from_item(item)
 
     @staticmethod
     def find_all():
         dynamo = awsclient("dynamodb")
-        filterexpr = "attribute_exists(AuthGuildIds) and attribute_exists(IssuedEpoch)"
+        filterexpr = "attribute_exists(TargetUrl) and attribute_exists(IssuedEpoch)"
         response = dynamo.scan(
             TableName=DYNAMOTABLE_API,
             FilterExpression=filterexpr
         )
-        return [Token.from_item(item) for item in response["Items"]]
+        return [ShortUrl.from_item(item) for item in response["Items"]]
 
     @staticmethod
     def from_item(item):
-        token = Token(
-            item["DiscordUserId"]["S"],
-            item["DiscordUserDisplayName"]["S"],
-            extract_dynamo_value(item["AuthGuildIds"])
+        token = ShortUrl(
+            item["TargetUrl"]["S"]
         )
         token.entryid = item["EntryId"]["S"]
+        token.shortstr = item["ShortStr"]["S"]
         token.issued = datetime.datetime.utcfromtimestamp(int(item["IssuedEpoch"]["N"]))
         return token
+    
+    @staticmethod
+    def gen_shortstr(entryid):
+        if ShortUrl.from_entryid(entryid) is not None:
+            return None
+        hexdigest = hashlib.sha256(entryid).hexdigest()
+        for l in range(6, len(hexdigest)):
+            if ShortUrl.from_shortstr(hexdigest[:l]) is None:
+                return hexdigest[:l]
+        return hexdigest
 
-    def __init__(self:"Token", user_id:str, user_display_name:str, auth_guild_ids:Set[str]) -> None:
+    def __init__(self:"ShortUrl", target_url:str) -> None:
         self.entryid = str(uuid.uuid4())
-        self.user_id = user_id
-        self.user_display_name = user_display_name
+        self.target_url = target_url
+        self.shortstr = ShortUrl.gen_shortstr(self.entryid)
         self.issued = datetime.datetime.utcnow()
-        self.auth_guild_ids = auth_guild_ids
     
     def __str__(self):
-        return self.entryid + "|" + str(int(self.issued.timestamp()))
-
-    def get_validity_for_guild_id(self, guild_id):
-        now = datetime.datetime.utcnow()
-        if (now - self.issued) > datetime.timedelta(seconds=3600):
-            return "expired"
-        if guild_id not in self.auth_guild_ids:
-            return "unauthorized"
-        return "valid"
+        return f"https://{API_URL}/link/{self.shortstr}"
 
     def save(self):
         item = {
             "EntryId": {"S": self.entryid},
-            "DiscordUserId": {"S": self.user_id},
-            "DiscordUserDisplayName": {"S": self.user_display_name},
-            "AuthGuildIds": build_dynamo_value(self.auth_guild_ids),
+            "TargetUrl": {"S": self.target_url},
+            "ShortStr": {"S": self.shortstr},
             "IssuedEpoch": {"N": str(int(self.issued.timestamp()))}
         }
         

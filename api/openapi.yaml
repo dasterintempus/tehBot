@@ -57,6 +57,45 @@ paths:
         passthroughBehavior: "when_no_templates"
         payloadFormatVersion: 2.0
         type: "aws_proxy"
+  /link/{shortstr}:
+    get:
+      parameters:
+        - name: shortstr
+          in: path
+          description: Shortened Link unique string
+          required: true
+          schema:
+            type: string
+      tags:
+        - misc
+      summary: Redirect a shortened URL
+      description: Generate an HTTP redirect to the target URL of a shortened URL
+      operationId: redirectShortUrl
+      responses:
+        '308':
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          description: Payload Error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        '404':
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                type: object
+      x-amazon-apigateway-integration:
+        uri: "{{lambda_shorturl_redirect}}"
+        httpMethod: "POST"
+        passthroughBehavior: "when_no_templates"
+        payloadFormatVersion: 2.0
+        type: "aws_proxy"
   /guilds/{guild_id}/steam/lobby/{lobby_uuid}/player/{player_uuid}/redirect:
     get:
       parameters:

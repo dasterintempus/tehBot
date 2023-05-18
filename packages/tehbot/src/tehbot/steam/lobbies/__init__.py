@@ -309,7 +309,13 @@ class Lobby:
         return f"steam://joinlobby/{self.appid}/{self.lobbyid}/{player.steamid.as_64}"
 
     def render_redirect_url(self, player: "Player"):
-        return f"https://{API_URL}/guilds/{self.guildid}/steam/lobby/{self.entryid}/player/{player.entryid}/redirect"
+        from tehbot.api.shorturl import ShortUrl
+        target_url = f"https://{API_URL}/guilds/{self.guildid}/steam/lobby/{self.entryid}/player/{player.entryid}/redirect"
+        url = ShortUrl.from_target_url(target_url)
+        if url is None:
+            url = ShortUrl(target_url)
+            url.save()
+        return str(url)
 
     def render_status_message(self, lobby_players: List["Player"]):
         try:

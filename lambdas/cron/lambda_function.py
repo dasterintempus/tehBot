@@ -9,6 +9,7 @@ import json
 from tehbot.aws import client as awsclient
 from tehbot.util import CONTEXT
 from tehbot.api.token import Token
+from tehbot.api.shorturl import ShortUrl
 import pprint
 
 def lobby_update(guildid):
@@ -42,6 +43,11 @@ def token_cleanup():
     for token in tokens:
         token.drop()
 
+def url_cleanup():
+    urls = ShortUrl.find_issued_before(datetime.datetime.utcnow() - datetime.timedelta(seconds=3600*48))
+    for url in urls:
+        url.drop()
+
 def lambda_handler(event, context):
     secrets_arn = os.environ.get("SECRETS_ARN")
     secrets = awsclient("secretsmanager")
@@ -62,3 +68,5 @@ def lambda_handler(event, context):
                 lam.invoke(FunctionName=context.invoked_function_arn, InvocationType="Event", Payload=json.dumps({"op": op, "guildid": guildid}).encode())
     elif op == "token_cleanup":
         token_cleanup()
+    elif op == "url_cleanup":
+        url_cleanup()
