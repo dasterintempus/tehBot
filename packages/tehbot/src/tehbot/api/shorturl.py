@@ -100,10 +100,10 @@ class ShortUrl:
         return token
     
     @staticmethod
-    def gen_shortstr(entryid):
+    def gen_shortstr(entryid:str):
         if ShortUrl.from_entryid(entryid) is not None:
             return None
-        hexdigest = hashlib.sha256(entryid).hexdigest()
+        hexdigest = hashlib.sha256(entryid.encode()).hexdigest()
         for l in range(6, len(hexdigest)):
             if ShortUrl.from_shortstr(hexdigest[:l]) is None:
                 return hexdigest[:l]

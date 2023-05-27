@@ -140,6 +140,26 @@ Resources:
       Action: "lambda:InvokeFunction"
       Principal: "events.amazonaws.com"
       SourceArn: !GetAtt CronLambdaTokenCleanupSchedule.Arn
+  CronLambdaShortUrlCleanupSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: !Sub "ScheduleRule for token_cleanup (${EnvPrefix})"
+      ScheduleExpression: "rate(1 day)"
+      State: "ENABLED"
+      Targets: 
+        - Arn: !GetAtt [CronLambda, Arn]
+          Id: "url_cleanup"
+          Input: |
+            {
+              "op": "url_cleanup"
+            }
+  CronLambdaShortUrlCleanupPerms:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !GetAtt [CronLambda, Arn]
+      Action: "lambda:InvokeFunction"
+      Principal: "events.amazonaws.com"
+      SourceArn: !GetAtt CronLambdaShortUrlCleanupSchedule.Arn
 
 
   WorkerLambda:
@@ -163,6 +183,8 @@ Resources:
         Mode: Active
       Environment:
         Variables:
+          DYNAMOTABLE_API: !ImportValue 
+            'Fn::Sub': "tehBot-${EnvPrefix}ApiTable"
           DYNAMOTABLE_CHART: !ImportValue
             'Fn::Sub': "tehBot-${EnvPrefix}ChartTable"
           DYNAMOTABLE_SETTINGS: !ImportValue

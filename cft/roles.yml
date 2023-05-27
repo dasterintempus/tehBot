@@ -354,6 +354,7 @@ Resources:
         - !Ref QuotesTablePolicy
         - !Ref SteamLobbyTablePolicy
         - !Ref S3CacheBucketPolicy
+        - !Ref ApiTablePolicy
 
   APILambdaRole:
     Type: AWS::IAM::Role

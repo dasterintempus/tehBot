@@ -42,7 +42,7 @@ def lambda_handler(event, context):
     if url is None:
         return make_response(404, body="Not Found")
 
-    target_url = str(url)
+    target_url = url.target_url
     response_body = f'''<!doctype html>
 <html lang="en">
   <head>
