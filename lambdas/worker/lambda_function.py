@@ -7,7 +7,7 @@ import hashlib
 from tehbot.discord import api as discord_api
 from tehbot.util import CONTEXT
 # from cmds import chart_show, chart_user, chart_variant, chart_settings
-from cmds import lobby_admin, lobby_optin, lobby_optout, lobby_preferences, lobby_link, lobby_friend, lobby_url, lobby_private_url
+from cmds import lobby_admin, lobby_optin, lobby_optout, lobby_link, lobby_friend, lobby_url, lobby_private_url
 from cmds import quote_search, quote_suggest
 from cmds import quotemod_add, quotemod_delete, quotemod_print, quotemod_list, quotemod_modify_tags
 from cmds import quotemod_alias_add, quotemod_alias_delete, quotemod_alias_print, quotemod_alias_list, quotemod_alias_modify_values
@@ -53,8 +53,6 @@ def lobby_cmd(body):
         return lobby_optin(body)
     elif subcmd == "opt-out":
         return lobby_optout(body)
-    elif subcmd == "preferences":
-        return lobby_preferences(body)
     elif subcmd == "link":
         return lobby_link(body)
     elif subcmd == "friend":

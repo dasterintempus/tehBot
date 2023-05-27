@@ -32,12 +32,19 @@ def lobby_optin(body):
         steamid = SteamID(vanity)
     if str(steamid.as_64) == "0":
         return True, {"json": {"content": "Unable to find your Steam profile. Please use the full URL from your Steam Profile, such as: 'https://steamcommunity.com/id/dasterin/' or 'https://steamcommunity.com/profiles/76561197966215444'."}}
+    existing_player_steam = Player.load_from_steamid(steamid, guildid)
+    
     discord_id = body["member"]["user"]["id"]
     discord_username = body["member"]["user"]["username"]
     discord_discriminator = body["member"]["user"]["discriminator"]
-    player = Player.load_from_discord(discord_id, guildid)
-    if player is not None:
-        return True, {"json": {"content": "You have already opted in!\nYou can use `/lobby opt-out` to remove your existing Steam profile link (and all preferences)."}}
+    existing_player_discord = Player.load_from_discord(discord_id, guildid)
+    if existing_player_discord is not None and existing_player_steam is not None and existing_player_discord.steamid == existing_player_steam.steamid:
+        return True, {"json": {"content": "You have already opted in to this Steam profile.\nYou can use the Lobby features such as `/lobby friend` and `/lobby link`."}}
+    elif existing_player_discord is not None:
+        return True, {"json": {"content": "You have already opted in to another Steam profile!\nYou can use `/lobby opt-out` to remove your existing Steam profile link."}}
+    elif existing_player_steam is not None:
+        return True, {"json": {"content": "This Steam profile is already linked!\nYou can use `/lobby opt-out` from the corresponding Discord account to remove your existing Steam profile link, or contact your bot administrator."}}
+
     player = Player(discord_id, discord_username, discord_discriminator, steamid, guildid)
 
     player.save()
@@ -54,21 +61,21 @@ def lobby_optout(body):
 
     return True, {"json": {"content": "No longer tracking your lobbies."}}
 
-def lobby_preferences(body):
-    guildid = body["guild_id"]
-    discord_id = body["member"]["user"]["id"]
-    player = Player.load_from_discord(discord_id, guildid)
-    if player is None:
-        return False, {"json": {"content": "You have not yet opted in."}}
-    preference_value = body["data"]["options"][0]["options"][0]["name"]
+# def lobby_preferences(body):
+#     guildid = body["guild_id"]
+#     discord_id = body["member"]["user"]["id"]
+#     player = Player.load_from_discord(discord_id, guildid)
+#     if player is None:
+#         return False, {"json": {"content": "You have not yet opted in."}}
+#     preference_value = body["data"]["options"][0]["options"][0]["name"]
     
-    if preference_value == "enable-auto-track":
-        player.settings["auto-track"] = True
-    elif preference_value == "disable-auto-track":
-        del player.settings["auto-track"]
-    player.save()
+#     if preference_value == "enable-auto-track":
+#         player.settings["auto-track"] = True
+#     elif preference_value == "disable-auto-track":
+#         del player.settings["auto-track"]
+#     player.save()
     
-    return True, {"json": {"content": "Preferences updated."}}
+#     return True, {"json": {"content": "Preferences updated."}}
 
 def lobby_friend(body):
     guildid = body["guild_id"]
