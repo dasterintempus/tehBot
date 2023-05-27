@@ -317,6 +317,15 @@ class Lobby:
             url.save()
         return str(url)
 
+    def render_standalone_redirect_url(self, player: "Player"):
+        from tehbot.api.shorturl import ShortUrl
+        target_url = self.render_steam_url(player)
+        url = ShortUrl.from_target_url(target_url)
+        if url is None:
+            url = ShortUrl(target_url)
+            url.save()
+        return str(url)
+
     def render_status_message(self, lobby_players: List["Player"]):
         try:
             r = requests.get(f"https://store.steampowered.com/app/{self.appid}")

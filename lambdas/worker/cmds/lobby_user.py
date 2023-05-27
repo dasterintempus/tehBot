@@ -151,7 +151,7 @@ def lobby_url(body):
     try:
         discord_id = body["member"]["user"]["id"]
         player = Player.load_from_discord(discord_id, guildid)
-        url = lobby.render_redirect_url(player)
+        url = lobby.render_standalone_redirect_url(player)
     except:
         traceback.print_exc()
         return True, {"json": {"content": "Unable to post lobby link to Discord..."}}
@@ -181,7 +181,7 @@ def lobby_private_url(body):
     try:
         discord_id = body["member"]["user"]["id"]
         player = Player.load_from_discord(discord_id, guildid)
-        url = lobby.render_redirect_url(player)
+        url = lobby.render_standalone_redirect_url(player)
     except:
         traceback.print_exc()
         return True, {"json": {"content": "Unable to post lobby link to Discord..."}}
