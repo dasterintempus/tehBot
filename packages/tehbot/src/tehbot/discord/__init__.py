@@ -14,7 +14,7 @@ secrets = boto3.client("secretsmanager")
 secret_blob = json.loads(secrets.get_secret_value(SecretId=secrets_arn)["SecretString"])
 BOT_TOKEN = secret_blob["discord_bot_token"]
 
-API_BASE_URL = "https://discord.com/api/v8"
+API_BASE_URL = "https://discord.com/api/v10"
 CDN_BASE_URL = "https://cdn.discordapp.com"
 
 def build_bot_session():

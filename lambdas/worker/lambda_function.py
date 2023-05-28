@@ -4,6 +4,12 @@ import os
 import boto3
 import hashlib
 
+import logging
+from http.client import HTTPConnection # py3
+
+logging.basicConfig(force=True, format="%(asctime)s %(levelname)s - %(name)s %(pathname)s.%(funcName)s:%(lineno)s %(message)s")
+logger = logging.getLogger(__name__)
+
 from tehbot.discord import api as discord_api
 from tehbot.util import CONTEXT
 # from cmds import chart_show, chart_user, chart_variant, chart_settings
@@ -156,6 +162,15 @@ def handle_record(body):
         return True
 
 def lambda_handler(event, context):
+    if "dev" in context.function_name.lower():
+        logger.setLevel(logging.DEBUG)
+        HTTPConnection.debuglevel = 1
+        requests_log = logging.getLogger("requests.packages.urllib3")
+        requests_log.setLevel(logging.DEBUG)
+        requests_log.propagate = True
+        print(json.dumps(event))
+    else:
+        logger.setLevel(logging.INFO)
     failures = []
     for record in event["Records"]:
         body = json.loads(record["body"])
