@@ -7,7 +7,7 @@ from tehbot.settings import get_settings
 
 def chart_user_add(body):
     if not is_admin_issuer():
-        return False, {"json": {"content": "Access Denied."}}
+        return True, {"json": {"content": "Access Denied."}}
     guild_id = body["guild_id"]
     userval = body["data"]["options"][0]["options"][0]["options"][0]["value"]
     userobj = body["data"]["resolved"]["users"][userval]
@@ -16,7 +16,7 @@ def chart_user_add(body):
     if avatar is None:
         avatar = userobj["avatar"]
     if avatar is None:
-        return False, {"json": {"content": "That user has no avatar image! Users must have an avatar set to be added to the alignment chart."}}
+        return True, {"json": {"content": "That user has no avatar image! Users must have an avatar set to be added to the alignment chart."}}
     
     user = User.load(userobj["id"], guild_id)
     if user is None:
@@ -24,7 +24,7 @@ def chart_user_add(body):
         user.save()
         return True, {"json": {"content": "User added!"}}
     else:
-        return False, {"json": {"content": "That user already exists! Perhaps you meant to add a variant?"}}
+        return True, {"json": {"content": "That user already exists! Perhaps you meant to add a variant?"}}
 
 def chart_user_list(body):
     guild_id = body["guild_id"]
@@ -40,7 +40,7 @@ def chart_user_list(body):
         ExpressionAttributeValues=filtervals
     )
     if len(response["Items"]) == 0:
-        return False, {"json": {"content": "No users found."}}
+        return True, {"json": {"content": "No users found."}}
     msg = "Users:\n"
     names = []
     for item in response["Items"]:
@@ -54,7 +54,7 @@ def chart_user_list(body):
 
 def chart_user_place(body):
     if not is_admin_issuer():
-        return False, {"json": {"content": "Access Denied."}}
+        return True, {"json": {"content": "Access Denied."}}
     guild_id = body["guild_id"]
     userval = body["data"]["options"][0]["options"][0]["options"][0]["value"]
     userobj = body["data"]["resolved"]["users"][userval]
@@ -64,7 +64,7 @@ def chart_user_place(body):
     
     user = User.load(userobj["id"], guild_id)
     if user is None:
-        return False, {"json": {"content": "User not found."}}
+        return True, {"json": {"content": "User not found."}}
     total = top_amount + right_amount + left_amount
     user.coordinates = [top_amount/total, right_amount/total, left_amount/total]
     user.save()
@@ -73,7 +73,7 @@ def chart_user_place(body):
 
 def chart_user_move(body):
     if not is_admin_issuer():
-        return False, {"json": {"content": "Access Denied."}}
+        return True, {"json": {"content": "Access Denied."}}
     guild_id = body["guild_id"]
     userval = body["data"]["options"][0]["options"][0]["options"][0]["value"]
     userobj = body["data"]["resolved"]["users"][userval]
@@ -81,7 +81,7 @@ def chart_user_move(body):
     amount = float(body["data"]["options"][0]["options"][0]["options"][2]["value"])
     user = User.load(userobj["id"], guild_id)
     if user is None:
-        return False, {"json": {"content": "User not found."}}
+        return True, {"json": {"content": "User not found."}}
     coords = user.coordinates
     if direction == "top":
         coords[0] += amount
@@ -101,13 +101,13 @@ def chart_user_move(body):
 
 def chart_user_reset(body):
     if not is_admin_issuer():
-        return False, {"json": {"content": "Access Denied."}}
+        return True, {"json": {"content": "Access Denied."}}
     guild_id = body["guild_id"]
     userval = body["data"]["options"][0]["options"][0]["options"][0]["value"]
     userobj = body["data"]["resolved"]["users"][userval]
     user = User.load(userobj["id"], guild_id)
     if user is None:
-        return False, {"json": {"content": "User not found."}}
+        return True, {"json": {"content": "User not found."}}
     user.coordinates = [1/3, 1/3, 1/3]
     user.save()
     return True, {"json": {"content": "User reset!"}}
@@ -118,7 +118,7 @@ def chart_user_print(body):
     userobj = body["data"]["resolved"]["users"][userval]
     user = User.load(userobj["id"], guild_id)
     if user is None:
-        return False, {"json": {"content": "User not found."}}
+        return True, {"json": {"content": "User not found."}}
     top_settings = get_settings(guild_id, "chart_settings.top")
     right_settings = get_settings(guild_id, "chart_settings.right")
     left_settings = get_settings(guild_id, "chart_settings.left")
@@ -135,13 +135,13 @@ def chart_user_print(body):
 
 def chart_user_remove(body):
     if not is_admin_issuer() and not is_self_issuer():
-        return False, {"json": {"content": "Access Denied."}}
+        return True, {"json": {"content": "Access Denied."}}
     guild_id = body["guild_id"]
     userval = body["data"]["options"][0]["options"][0]["options"][0]["value"]
     userobj = body["data"]["resolved"]["users"][userval]
     user = User.load(userobj["id"], guild_id)
     if user is None:
-        return False, {"json": {"content": "User not found."}}
+        return True, {"json": {"content": "User not found."}}
     user.drop()
     return True, {"json": {"content": "User removed."}}
 
