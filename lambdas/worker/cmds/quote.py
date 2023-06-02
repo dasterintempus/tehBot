@@ -4,6 +4,7 @@ from tehbot.quotes import Quote, Alias
 from tehbot.settings import get_settings
 import random
 import traceback
+from tehbot.util import CONTEXT
 
 def quote_search(body):
     guild_id = body["guild_id"]
@@ -30,7 +31,13 @@ def quote_search(body):
             }
         }]
     }
-    return True, {"json": outbody}
+
+    #return True, {"json": outbody}
+    #DISCORD WORKAROUND
+    interaction_token = body["token"]
+    discord_api.post(f"webhooks/{CONTEXT['secrets']['application_id']}/{interaction_token}", json=outbody)
+
+    return True, {"json": {"content": content}}
 
 def quote_suggest(body):
     guild_id = body["guild_id"]
