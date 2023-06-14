@@ -38,6 +38,20 @@ class User:
             return User.from_item(item)
 
     @staticmethod
+    def get_all_users(guildid):
+        dynamo = awsclient("dynamodb")
+        filterexpr = "GuildId = :guildid AND attribute_not_exists(VariantName)"
+        filtervals = {
+            ":guildid": {"S": guildid}
+        }
+        response = dynamo.scan(
+            TableName=os.environ.get("DYNAMOTABLE_CHART"),
+            FilterExpression=filterexpr,
+            ExpressionAttributeValues=filtervals
+        )
+        return [User.from_item(item) for item in response["Items"]]
+
+    @staticmethod
     def from_item(item):
         user = User(
             item["UserId"]["S"],
@@ -146,6 +160,7 @@ def find_user_color(user):
         
 def update_user(user):
     user_id = user.id
+    print("updating: %s" % user_id)
     r = discord_api.get(f"users/{user_id}")
     if r.status_code != 200:
         raise UserException(user, f"Unable to query user: {r.status_code}")
@@ -153,7 +168,6 @@ def update_user(user):
     user.name = userblob["username"]
     user.discrim = userblob["discriminator"]
     user.avatar = userblob["avatar"]
-    user.guild_id = CONTEXT["request"]["guild_id"]
     user.has_guild_avatar = False
     r = discord_api.get(f"guilds/{user.guild_id}/members/{user_id}")
     if r.status_code == 200:

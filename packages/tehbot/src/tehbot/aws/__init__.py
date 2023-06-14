@@ -13,7 +13,7 @@ def build_dynamo_value(val):
     elif isinstance(val, str):
         return {"S": val}
     elif isinstance(val, (int, float)):
-        return {"N": val}
+        return {"N": str(val)}
     elif isinstance(val, list):
         return {"L": [build_dynamo_value(i) for i in val]}
     elif isinstance(val, dict):
@@ -28,7 +28,7 @@ def extract_dynamo_value(val):
         if "." in val["N"]:
             return float(val["N"])
         else:
-            return int(val("N"))
+            return int(val["N"])
     elif "BOOL" in val:
         return val["BOOL"]
     elif "M" in val:

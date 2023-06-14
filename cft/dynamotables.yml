@@ -84,6 +84,22 @@ Resources:
           Value: !Ref EnvPrefix
     UpdateReplacePolicy: Retain
     DeletionPolicy: Retain
+  
+  ControllerLayoutTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: EntryId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: EntryId
+          KeyType: HASH
+      Tags:
+        - Key: tehBotEnv
+          Value: !Ref EnvPrefix
+    UpdateReplacePolicy: Retain
+    DeletionPolicy: Retain
 
 Outputs:
   ChartTable:
@@ -106,3 +122,7 @@ Outputs:
     Value: !Ref ApiTable
     Export:
       Name: !Sub "tehBot-${EnvPrefix}ApiTable"
+  ControllerLayoutTable:
+    Value: !Ref ControllerLayoutTable
+    Export:
+      Name: !Sub "tehBot-${EnvPrefix}ControllerLayoutTable"

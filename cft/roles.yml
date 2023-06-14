@@ -271,6 +271,44 @@ Resources:
             Action: "dynamodb:ListTables"
             Resource: "*"
 
+  ControllerLayoutTablePolicy:
+    Type: AWS::IAM::ManagedPolicy
+    Properties:
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action:
+              - "dynamodb:BatchGetItem"
+              - "dynamodb:BatchWriteItem"
+              - "dynamodb:ConditionCheckItem"
+              - "dynamodb:PutItem"
+              - "dynamodb:DescribeTable"
+              - "dynamodb:DeleteItem"
+              - "dynamodb:GetItem"
+              - "dynamodb:Scan"
+              - "dynamodb:Query"
+              - "dynamodb:UpdateItem"
+              - "dynamodb:DescribeTimeToLive"
+            Resource:
+              - !Join
+                - "/"
+                -
+                  - !Sub "arn:${AWS::Partition}:dynamodb:us-east-2:${AWS::AccountId}:table"
+                  - !ImportValue
+                    'Fn::Sub': "tehBot-${EnvPrefix}ControllerLayoutTable"
+                  - "index"
+                  - "*"
+              - !Join
+                - "/"
+                -
+                  - !Sub "arn:${AWS::Partition}:dynamodb:us-east-2:${AWS::AccountId}:table"
+                  - !ImportValue
+                    'Fn::Sub': "tehBot-${EnvPrefix}ControllerLayoutTable"
+          - Effect: "Allow"
+            Action: "dynamodb:ListTables"
+            Resource: "*"
+
   WebhookLambdaRole:
     Type: AWS::IAM::Role
     Properties:
@@ -321,6 +359,7 @@ Resources:
         - !Ref SecretsPolicy
         - !Ref SettingsTablePolicy
         - !Ref SteamLobbyTablePolicy
+        - !Ref ChartTablePolicy
         - !Ref S3CacheBucketPolicy
         - !Ref ApiTablePolicy
       Policies:
@@ -350,11 +389,12 @@ Resources:
         - !Ref LoggingPolicy
         - !Ref SecretsPolicy
         - !Ref SettingsTablePolicy
-        - !Ref ChartTablePolicy
         - !Ref QuotesTablePolicy
         - !Ref SteamLobbyTablePolicy
+        - !Ref ChartTablePolicy
         - !Ref S3CacheBucketPolicy
         - !Ref ApiTablePolicy
+        - !Ref ControllerLayoutTablePolicy
 
   APILambdaRole:
     Type: AWS::IAM::Role

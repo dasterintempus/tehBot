@@ -285,6 +285,7 @@ def package_lambda(ctx, lambda_name, lambda_bucket, lambda_version):
 
 """aws ecr get-login-password --region us-east-2 | docker login --username AWS --password-stdin 105824585986.dkr.ecr.us-east-2.amazonaws.com"""
 def package_heavy_lambda(ctx, lambda_name, lambda_version):
+    shutil.copy("../packages/tehbot/dist/tehbot-0.0.1-py3-none-any.whl", "../docker/heavyworker/tehbot-0.0.1-py3-none-any.whl")
     dockerc: docker.DockerClient = ctx["docker"]
     try:
         image, buildlogs = dockerc.images.build(path="../docker/heavyworker/")

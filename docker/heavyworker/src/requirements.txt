@@ -1,5 +1,6 @@
 Pillow
-steam[client]
+urllib3<2
+# steam[client]
 beautifulsoup4
 cfscrape
 boto3

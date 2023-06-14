@@ -7,6 +7,7 @@ import hashlib
 from tehbot.discord import api as discord_api
 from tehbot.util import CONTEXT
 from cmds import chart_show, chart_user, chart_variant, chart_settings
+from cmds import controller_layout
 from cmds import generate_tierlist
 
 # def say_cmd(body):
@@ -39,6 +40,10 @@ def chart_cmd(body):
         return chart_variant(body)
     elif body["data"]["options"][0]["name"] == "settings":
         return chart_settings(body)
+
+def controller_cmd(body):
+    if body["data"]["options"][0]["name"] == "layout":
+        return controller_layout(body)
 
 def tierlist_cmd(body):
     if "options" in body["data"] and len(body["data"]["options"]) > 0:
@@ -74,6 +79,8 @@ def handle_record(body):
     CONTEXT["cache"] = {}
     if body["data"]["name"] == "chart":
         response = chart_cmd(body)
+    elif body["data"]["name"] == "controller":
+        response = controller_cmd(body)
     elif body["data"]["name"] == "tierlist":
         response = tierlist_cmd(body)
     else:

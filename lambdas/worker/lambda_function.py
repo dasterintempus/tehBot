@@ -17,6 +17,7 @@ from cmds import lobby_admin, lobby_optin, lobby_optout, lobby_link, lobby_frien
 from cmds import quote_search, quote_suggest
 from cmds import quotemod_add, quotemod_delete, quotemod_print, quotemod_list, quotemod_modify_tags
 from cmds import quotemod_alias_add, quotemod_alias_delete, quotemod_alias_print, quotemod_alias_list, quotemod_alias_modify_values
+from cmds import combo_display
 # from cmds import generate_tierlist
 from cmds import meta_maintenance_start, meta_maintenance_end
 
@@ -67,6 +68,9 @@ def lobby_cmd(body):
         return lobby_url(body)
     elif subcmd == "private-url":
         return lobby_private_url(body)
+
+def combo_cmd(body):
+    return combo_display(body)
 
 def quote_cmd(body):
     return quote_search(body)
@@ -126,6 +130,8 @@ def handle_record(body):
         response = lobby_cmd(body)
     elif body["data"]["name"] == "quote":
         response = quote_cmd(body)
+    elif body["data"]["name"] == "combo":
+        response = combo_cmd(body)
     elif body["data"]["name"] == "SuggestQuote":
         response = quote_suggest(body)
     elif body["data"]["name"] == "quotemod":

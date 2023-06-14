@@ -94,9 +94,9 @@ def interact(event, context):
     if body["type"] == 1:
         print("PING")
         return json_response({"type": 1})
-    elif body["data"]["name"] in ("lobby", "quote", "quotemod", "SuggestQuote"):
+    elif body["data"]["name"] in ("lobby", "quote", "quotemod", "SuggestQuote", "combo"):
         return forward_response(event["body"], body["data"]["type"])
-    elif body["data"]["name"] in ("chart", "tierlist"):
+    elif body["data"]["name"] in ("chart", "tierlist", "controller"):
         return forward_response_heavy(event["body"], body["data"]["type"])
     elif body["data"]["name"] in ("say",):
         return json_response({"type": 4, "data": {

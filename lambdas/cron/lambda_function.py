@@ -10,6 +10,7 @@ from tehbot.aws import client as awsclient
 from tehbot.util import CONTEXT
 from tehbot.api.token import Token
 from tehbot.api.shorturl import ShortUrl
+from tehbot.chart.users import User, update_user as update_chart_user
 import pprint
 
 def lobby_update(guildid):
@@ -48,6 +49,11 @@ def url_cleanup():
     for url in urls:
         url.drop()
 
+def chart_user_updates(guildid):
+    users = User.get_all_users(guildid)
+    for user in users:
+        update_chart_user(user)
+
 def lambda_handler(event, context):
     secrets_arn = os.environ.get("SECRETS_ARN")
     secrets = awsclient("secretsmanager")
@@ -61,6 +67,15 @@ def lambda_handler(event, context):
         if "guildid" in event:
             guildid = event["guildid"]
             lobby_update(guildid)
+        else:
+            guilds = list_guilds()
+            lam = awsclient("lambda")
+            for guildname, guildid in guilds:
+                lam.invoke(FunctionName=context.invoked_function_arn, InvocationType="Event", Payload=json.dumps({"op": op, "guildid": guildid}).encode())
+    elif op == "chart_user_update":
+        if "guildid" in event:
+            guildid = event["guildid"]
+            chart_user_updates(guildid)
         else:
             guilds = list_guilds()
             lam = awsclient("lambda")

@@ -1,0 +1,12 @@
+{
+    "name": "controller",
+    "type": 1,
+    "description": "Controller layout display",
+    "options": [
+        {
+            "name": "layout",
+            "description": "Show your controller layout! Don't worry, the bot knows it already.",
+            "type": 1
+        }
+    ]
+}
