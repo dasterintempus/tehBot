@@ -18,6 +18,7 @@ from cmds import quote_search, quote_suggest
 from cmds import quotemod_add, quotemod_delete, quotemod_print, quotemod_list, quotemod_modify_tags
 from cmds import quotemod_alias_add, quotemod_alias_delete, quotemod_alias_print, quotemod_alias_list, quotemod_alias_modify_values
 from cmds import combo_display
+from cmds import keysmash_score
 # from cmds import generate_tierlist
 from cmds import meta_maintenance_start, meta_maintenance_end
 
@@ -74,6 +75,9 @@ def combo_cmd(body):
 
 def quote_cmd(body):
     return quote_search(body)
+
+def keysmash_cmd(body):
+    return keysmash_score(body)
 
 def quotemod_cmd(body):
     subcmd = body["data"]["options"][0]["name"]
@@ -134,6 +138,8 @@ def handle_record(body):
         response = combo_cmd(body)
     elif body["data"]["name"] == "SuggestQuote":
         response = quote_suggest(body)
+    elif body["data"]["name"] == "ScoreKeySmash":
+        response = keysmash_cmd(body)
     elif body["data"]["name"] == "quotemod":
         response = quotemod_cmd(body)
     # elif body["data"]["name"] == "tierlist":

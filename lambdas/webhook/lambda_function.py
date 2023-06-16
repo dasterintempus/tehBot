@@ -54,19 +54,19 @@ def json_response(r, code=200):
             "body": json.dumps(r)
         }
 
-def forward_response(bodystr, interaction_type):
+def forward_response(body:dict):
     sqs = boto3.client("sqs")
-    sqs.send_message(QueueUrl=QUEUE_URL, MessageBody=bodystr)
-    if interaction_type == 3:
+    sqs.send_message(QueueUrl=QUEUE_URL, MessageBody=json.dumps(body))
+    if body["data"]["name"] == "SuggestQuote":
         return json_response({"type": 4, "data": {"content": ":eyes:"}})
     else:
         return json_response({"type": 5})
     
-def forward_response_heavy(bodystr, interaction_type):
+def forward_response_heavy(body:dict):
     sqs = boto3.client("sqs")
     # print(DAEMON_QUEUE_URL)
-    sqs.send_message(QueueUrl=HEAVY_QUEUE_URL, MessageBody=bodystr)
-    if interaction_type == 3:
+    sqs.send_message(QueueUrl=HEAVY_QUEUE_URL, MessageBody=json.dumps(body))
+    if body["data"]["type"] == 3:
         return json_response({"type": 4, "data": {"content": ":eyes:"}})
     else:
         return json_response({"type": 5})
@@ -94,10 +94,10 @@ def interact(event, context):
     if body["type"] == 1:
         print("PING")
         return json_response({"type": 1})
-    elif body["data"]["name"] in ("lobby", "quote", "quotemod", "SuggestQuote", "combo"):
-        return forward_response(event["body"], body["data"]["type"])
+    elif body["data"]["name"] in ("lobby", "quote", "quotemod", "SuggestQuote", "combo", "ScoreKeySmash"):
+        return forward_response(body)
     elif body["data"]["name"] in ("chart", "tierlist", "controller"):
-        return forward_response_heavy(event["body"], body["data"]["type"])
+        return forward_response_heavy(body)
     elif body["data"]["name"] in ("say",):
         return json_response({"type": 4, "data": {
             "content": "This command has been removed :( Please use '!botsing' instead."

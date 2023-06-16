@@ -7,4 +7,5 @@ from .lobby_user import *
 from .quote import *
 # from .tierlist import *
 from .combo import *
+from .keysmash import *
 from .meta_maintenance import *
